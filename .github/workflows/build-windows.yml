@@ -1,0 +1,21 @@
+name: Build Deixa.exe
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./... && GOOS=windows go vet ./...
+      - run: ./build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Deixa-windows
+          path: dist/Deixa.exe
