@@ -1,0 +1,104 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Tutorial Deixa</title>
+<style>
+@page{size:A4;margin:16mm 15mm}
+body{font:11pt/1.55 'DM Sans',Arial,sans-serif;color:#1d211c;margin:0}
+h1{font:700 30pt Arial;margin:0 0 4px;letter-spacing:-1px}h1 span{color:#8bb31f}
+.sub{color:#5d665c;margin:0 0 18px;font-size:12pt}
+h2{font:700 15pt Arial;margin:22px 0 6px;padding-top:6px;border-top:2px solid #d4f77a;break-after:avoid}
+h2 b{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#1d211c;color:#d4f77a;font-size:11pt;margin-right:8px}
+p{margin:4px 0 8px}ul{margin:4px 0 10px;padding-left:20px}li{margin:3px 0}
+img{display:block;max-width:100%;max-height:105mm;width:auto;border-radius:8px;border:1px solid #ccd3c4;margin:8px 0 6px;break-inside:avoid}
+img.s{max-width:62%}img.xs{max-width:46%}
+kbd{font:9pt monospace;border:1px solid #9aa294;border-bottom-width:2px;border-radius:4px;padding:1px 5px;background:#f4f6f1}
+.tip{background:#f2f9de;border-left:4px solid #9cc72a;padding:8px 12px;border-radius:4px;margin:10px 0;break-inside:avoid}
+.warn{background:#fff4e0;border-left:4px solid #e3a13b;padding:8px 12px;border-radius:4px;margin:10px 0;break-inside:avoid}
+table{border-collapse:collapse;width:100%;margin:6px 0 10px;font-size:10.5pt}td{border-bottom:1px solid #e1e5dc;padding:5px 6px;vertical-align:top}td:first-child{white-space:nowrap;font-weight:600;width:28%}
+.pb{break-before:page}
+.cap{font-size:9pt;color:#6b7369;margin-top:-2px}
+</style></head><body>
+<h1>deixa<span>.</span> — tutorial</h1>
+<p class="sub">Mesa de áudio para espetáculos · versão 2.2 · Windows</p>
+<img src="1-mesa.png"><p class="cap">A tela completa: menu (esquerda, encolhido), sequência de músicas, player, e o roteiro com as anotações (direita).</p>
+
+<h2><b>0</b>Instalando</h2>
+<ul><li>Extraia o <b>Deixa-2.2.zip</b> numa pasta (ex.: <i>Documentos\Deixa</i>) e abra o <b>Exulte.exe</b>.</li>
+<li>Tudo o que você fizer é salvo sozinho na pasta <b>Deixa-dados</b>, criada ao lado do programa. Não precisa clicar em salvar.</li>
+<li>Para atualizar o app, troque só o <b>Exulte.exe</b> e mantenha a pasta <b>Deixa-dados</b>. Assim nada se perde.</li></ul>
+
+<h2><b>1</b>Músicas: montando a sequência</h2>
+<img src="2-sequencia.png" class="s">
+<ul><li><b>＋ Músicas</b> ou <b>arraste os arquivos</b> do computador para qualquer lugar da janela.</li>
+<li><b>↑ ↓</b> mudam a ordem e <b>×</b> exclui a música. Clicar no nome seleciona a música; duplo clique renomeia.</li>
+<li>A lista tem rolagem própria: mesmo com 30 músicas, o resto da tela fica no lugar.</li>
+<li>Os formatos comuns entram direto (MP3, WAV, M4A, FLAC, OGG). Os incomuns (WMA, AIFF, áudio de vídeo) são convertidos sozinhos.</li></ul>
+
+<h2><b>2</b>Tocando o espetáculo</h2>
+<img src="3-player.png" class="xs">
+<table>
+<tr><td><kbd>Espaço</kbd> ou ▶</td><td>Toca / pausa a música selecionada</td></tr>
+<tr><td>■</td><td>Para e volta ao início</td></tr>
+<tr><td>Ⅰ◀ &nbsp; ▶Ⅰ</td><td>Música anterior / próxima</td></tr>
+<tr><td><kbd>Esc</kbd> / Parar tudo</td><td>Para a música e todos os efeitos na hora (emergência)</td></tr>
+<tr><td>Avançar automaticamente</td><td>Ao terminar uma música, a próxima começa sozinha</td></tr>
+</table>
+<ul><li><b>✓ Check:</b> a música que toca <b>até o fim</b> ganha um ✓ verde, para você saber o que já passou. Clicar no ✓ desmarca. <b>↺ Limpar</b> desmarca todas antes de uma nova apresentação.</li>
+<li><b>PRÓXIMA:</b> com uma música tocando, clicar em outra <b>não corta o som</b>. Ela fica marcada em azul como <b>PRÓXIMA</b>, e você já vê as anotações e o roteiro dela. Ela entra quando você aperta <b>▶Ⅰ</b> ou quando a atual termina. Para desistir, clique nela de novo.</li></ul>
+<div class="tip">Clicar na música que já está tocando não faz nada. Isso é de propósito, para ninguém reiniciar a música sem querer no meio da cena.</div>
+
+<h2><b>3</b>Efeitos sonoros</h2>
+<img src="4-efeitos.png" class="s">
+<ul><li><b>＋ Efeitos</b> ou <b>arraste os arquivos em cima do painel “Efeitos sonoros”</b>. Ele fica destacado quando o arquivo pode ser solto. Se soltar fora do painel, o arquivo entra como música.</li>
+<li>Para disparar, clique no pad ou use as teclas <kbd>1</kbd> a <kbd>9</kbd>. Clique de novo para parar o efeito.</li>
+<li>Os efeitos tocam <b>por cima</b> da música, sem interromper. O <b>volume dos efeitos</b> é separado do volume da música.</li>
+<li>Duplo clique no nome renomeia o efeito; o × no canto exclui.</li></ul>
+
+<h2><b>4</b>Deixas programadas (automáticas)</h2>
+<img src="5-deixas.png" class="s">
+<ul><li>Selecione a música e clique em <b>＋ Deixa</b>. Escolha <b>tocar um efeito</b> ou <b>pausar a música</b> num tempo exato (mm:ss).</li>
+<li>Durante a música, a deixa dispara sozinha no tempo certo. Se você arrastar a música para trás, as deixas voltam a valer.</li></ul>
+
+<h2><b>5</b>Equalizador</h2>
+<img src="6-eq.png" class="xs">
+<ul><li>Botão <b>≋ Equalizador</b> no topo. São 5 faixas, do grave (60 Hz) ao agudo (12 kHz), de −12 a +12 dB.</li>
+<li>Vale para <b>tudo</b>: músicas e efeitos. Pode ajustar com o som tocando, sem cortes.</li>
+<li>Duplo clique numa faixa zera só ela; <b>Zerar</b> zera todas. A caixa <b>Equalizador ligado</b> liga e desliga o equalizador, para comparar o som.</li></ul>
+
+<h2 class="pb"><b>6</b>Roteiro</h2>
+<img src="7-roteiro.png" class="s">
+<ul><li>No menu esquerdo, <b>✎ Roteiro</b> abre o roteiro como uma coluna fixa à direita, na mesma tela da mesa. O <b>✕</b> fecha.</li>
+<li><b>✎ Editar</b> para escrever ou <b>colar</b> o roteiro (do Word, PDF, WhatsApp…). Ao terminar, <b>✓ Concluir</b>.</li>
+<li><b>A− / A+</b> mudam o tamanho da letra. A rolagem é na mão.</li>
+<li><b>Cenas (opcional):</b> uma linha como <b>“Cena 1 – Anunciação”</b> vira um botão na lista do topo; clique para pular até ela.</li></ul>
+
+<h3>Marca-texto</h3>
+<img src="8-marca.png" class="s">
+<ul><li>Selecione um trecho com o mouse e aparece a barrinha <b>Marcar</b>. Escolha <b>amarelo</b>, <b>vermelho</b> ou <b>azul</b>.</li>
+<li>Para tirar a marca, selecione o trecho e clique em <b>⌫</b>. Funciona lendo ou editando o roteiro.</li>
+<li>Sugestão de uso: amarelo para fala que é deixa, vermelho para cena crítica de som e azul para deixa de luz ou dança.</li></ul>
+
+<h2><b>7</b>Anotações de cada música</h2>
+<img src="9-notas.png" class="s">
+<p>Num musical, cada música é uma cena. Em cima do roteiro fica a caixa <b>📋 Anotações</b> da música selecionada, ou da <b>PRÓXIMA</b>, se houver uma marcada.</p>
+<ul><li>Clique na caixa e escreva o que o operador precisa lembrar, uma coisa por linha. Ex.: <i>Mutar os microfones 1 e 2 · Soltar efeito em 43s</i>. Salva sozinho.</li>
+<li><b>Ligar a música ao roteiro:</b> role o roteiro até o começo daquela música (ex.: “🎵 2. ANUNCIAÇÃO”) e clique em <b>📍 Ligar ao trecho visível</b>.</li>
+<li>Depois de ligada, <b>selecionar a música leva o roteiro direto até o trecho dela</b>. Na lista, a música mostra o trecho ligado embaixo do nome. O <b>✕</b> desfaz a ligação.</li></ul>
+<div class="tip"><b>Rotina de preparo sugerida:</b> para cada música → selecione → role o roteiro até ela → 📍 Ligar → escreva as anotações. No dia, é só seguir a sequência.</div>
+
+<h2><b>8</b>Tela, backup e segurança</h2>
+<img src="10-menu.png" style="max-height:60mm;float:right;margin:0 0 8px 14px">
+<ul><li>O <b>«</b> no topo do menu esquerdo encolhe a barra, que fica só com os ícones, e libera espaço. O <b>»</b> abre de novo.</li>
+<li><b>Salvar backup</b> gera um .zip com o espetáculo inteiro (músicas, efeitos, roteiro, anotações). Use <b>Abrir backup</b> para levá-lo a outro computador.</li>
+<li><b>Pasta de dados</b> abre a pasta onde o Deixa guarda tudo.</li>
+<li>Com o Deixa aberto, o computador <b>não entra em suspensão nem apaga a tela</b>.</li></ul>
+<div style="clear:both"></div>
+<div class="warn"><b>Antes de cada apresentação:</b> faça um ensaio completo. Toque cada música, dispare os efeitos, confira o equalizador e as anotações. Depois clique em <b>↺ Limpar</b> para zerar os checks.</div>
+
+<h2><b>⌨</b>Atalhos</h2>
+<table>
+<tr><td><kbd>Espaço</kbd></td><td>Toca / pausa</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Para todos os sons</td></tr>
+<tr><td><kbd>1</kbd> … <kbd>9</kbd></td><td>Dispara os efeitos 1 a 9</td></tr>
+<tr><td>Duplo clique</td><td>Renomeia música/efeito · zera faixa do equalizador</td></tr>
+</table>
+<p class="cap">Os atalhos ficam desligados enquanto você digita no roteiro ou nas anotações.</p>
+</body></html>

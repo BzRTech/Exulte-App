@@ -103,3 +103,7 @@ mark.hl-y{background:#f5e663}mark.hl-r{background:#ff8f8f}mark.hl-b{background:#
 .track.queued{background:#1b2230;box-shadow:inset 3px 0 0 #8fc7ff}
 .track.queued .num::after{content:'PRÓXIMA';display:block;font:600 7px 'DM Sans';letter-spacing:1px;color:#8fc7ff;margin-top:3px}
 [hidden]{display:none!important}
+#guideDialog{width:min(640px,94vw);max-height:86vh;overflow:auto}
+#guideDialog h3{font:600 13px 'Space Grotesk',sans-serif;color:var(--lime);margin:18px 0 4px;letter-spacing:.3px}
+#guideDialog p{margin:0 0 8px;font-size:12.5px;color:#b8bfb8}
+#guideDialog b{color:var(--text)}
