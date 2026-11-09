@@ -787,6 +787,41 @@ function markSelection(color) {
   view.scrollTop = top;
   save();
 }
+// transforma (ou desfaz) a(s) linha(s) selecionada(s) em título de cena
+function toggleSceneSelection() {
+  const sel = getSelection(), view = $('#scriptView');
+  if (!sel.rangeCount) return;
+  const r = sel.getRangeAt(0);
+  if (!view.contains(r.commonAncestorContainer)) return;
+  const S = '', E = '';
+  const end = r.cloneRange(); end.collapse(false); end.insertNode(document.createTextNode(E));
+  const st = r.cloneRange(); st.collapse(true); st.insertNode(document.createTextNode(S));
+  const lines = domToScript(view);
+  let on = false;
+  const touched = [];
+  for (const l of lines) {
+    const hasS = l.plain.includes(S), hasE = l.plain.includes(E);
+    if (hasS) on = true;
+    if (on && l.plain.replace(/[]/g, '').trim()) touched.push(l);
+    if (hasE) on = false;
+    const keep = [...l.plain].map((c, i) => c !== S && c !== E);
+    l.colors = l.colors.filter((_, i) => keep[i]);
+    l.plain = l.plain.replace(/[]/g, '');
+  }
+  if (!touched.length) return;
+  const makeScene = !touched[0].prefix;
+  for (const l of touched) l.prefix = makeScene ? '# ' : '';
+  const top = view.scrollTop;
+  state.script = linesToText(lines);
+  sel.removeAllRanges();
+  hideMarkBar();
+  renderScript();
+  view.scrollTop = top;
+  save();
+  toast(makeScene ? 'Linha marcada como cena.' : 'A linha voltou a ser texto.');
+}
+$('#sceneBtn').onmousedown = e => e.preventDefault();
+$('#sceneBtn').onclick = toggleSceneSelection;
 function hideMarkBar() { $('#markBar').hidden = true; }
 document.addEventListener('selectionchange', () => {
   const bar = $('#markBar'), sel = getSelection(), view = $('#scriptView');
@@ -796,7 +831,7 @@ document.addEventListener('selectionchange', () => {
   bar.style.top = Math.max(4, rect.top - box.top - bar.offsetHeight - 8) + 'px';
   bar.style.left = Math.min(box.width - bar.offsetWidth - 4, Math.max(4, rect.left - box.left + rect.width / 2 - bar.offsetWidth / 2)) + 'px';
 });
-for (const bt of document.querySelectorAll('#markBar button')) {
+for (const bt of document.querySelectorAll('#markBar button[data-c]')) {
   bt.onmousedown = e => e.preventDefault(); // não perde a seleção
   bt.onclick = () => markSelection(bt.dataset.c || null);
 }
