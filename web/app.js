@@ -187,16 +187,35 @@ function stopEffects() {
 
 // ------------------------------------------------------------------ faixas
 
+// músicas tocadas até o fim nesta apresentação (guardado neste computador)
+let played = new Set();
+try { played = new Set(JSON.parse(localStorage.getItem('deixa-tocadas') || '[]')); } catch { }
+function savePlayed() { try { localStorage.setItem('deixa-tocadas', JSON.stringify([...played])); } catch { } }
+function markPlayed(id) { if (!id) return; played.add(id); savePlayed(); renderTracks(); }
+function updatePlayedInfo() {
+  const n = state.tracks.filter(t => played.has(t.id)).length;
+  $('#playedInfo').textContent = n ? `✓ ${n} de ${state.tracks.length} tocadas` : '';
+  $('#clearPlayed').hidden = !n;
+}
+
 function renderTracks() {
   const list = $('#trackList'), top = list.scrollTop;
   list.replaceChildren();
   $('#count').textContent = pad2(state.tracks.length);
   state.tracks.forEach((t, i) => {
     const row = document.createElement('div');
-    row.className = 'track' + (i === selected ? ' selected' : '');
+    row.className = 'track' + (i === selected ? ' selected' : '') + (played.has(t.id) ? ' played' : '');
     row.innerHTML = `<span class="num">${pad2(i + 1)}</span><div class="track-info" tabindex="0" role="button"><strong></strong><small></small></div><span class="track-time">${fmt(t.duration)}</span><div class="row-actions"><button title="Mover para cima">↑</button><button title="Mover para baixo">↓</button><button title="Excluir faixa">×</button></div>`;
     row.querySelector('strong').textContent = t.name;
     row.querySelector('strong').title = t.name;
+    if (played.has(t.id)) {
+      const ok = document.createElement('span');
+      ok.className = 'played-check';
+      ok.textContent = '✓';
+      ok.title = 'Tocada até o fim — clique para desmarcar';
+      ok.onclick = ev => { ev.stopPropagation(); played.delete(t.id); savePlayed(); renderTracks(); };
+      row.querySelector('.num').after(ok);
+    }
     row.querySelector('small').textContent = t.cues.length === 1 ? '1 deixa' : `${t.cues.length} deixas`;
     const info = row.querySelector('.track-info');
     info.onclick = () => select(i);
@@ -212,6 +231,7 @@ function renderTracks() {
   });
   if (!state.tracks.length) list.innerHTML = '<div class="empty">Seu espetáculo começa aqui.<br>Importe uma música para preparar a primeira cena.</div>';
   list.scrollTop = top;
+  updatePlayedInfo();
   const sel = list.querySelector('.track.selected'); // mantém a faixa atual visível, só dentro da lista
   if (sel) {
     const y = sel.offsetTop - list.offsetTop;
@@ -343,6 +363,7 @@ music.ontimeupdate = cueTick;
 music.onplay = () => { startTicker(); updatePlay(); };
 music.onpause = () => { stopTicker(); cueTick(); updatePlay(); };
 music.onended = () => {
+  markPlayed(state.tracks[selected]?.id);
   stopTicker();
   updatePlay();
   if (state.auto && selected < state.tracks.length - 1) { select(selected + 1); toggle(); }
@@ -589,6 +610,10 @@ $('#fxVol').oninput = e => {
   if (fx.gain) fx.gain.gain.setTargetAtTime(state.fxVol / 100, fx.ctx.currentTime, 0.02);
   for (const h of active.values()) if (h.el) h.el.volume = state.fxVol / 100;
   save();
+};
+$('#clearPlayed').onclick = () => {
+  if (!confirm('Desmarcar todas as músicas tocadas? (para começar uma nova apresentação)')) return;
+  played.clear(); savePlayed(); renderTracks();
 };
 $('#auto').onchange = e => { state.auto = e.target.checked; save(); };
 $('#showName').onblur = () => {

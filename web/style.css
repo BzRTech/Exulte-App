@@ -74,3 +74,14 @@ mark.hl-y{background:#f5e663}mark.hl-r{background:#ff8f8f}mark.hl-b{background:#
 #trackList .track{padding-block:11px}#trackList .track-info small{margin-top:4px}
 .script-view.editing{outline:none;background:#0e1113;box-shadow:inset 0 0 0 1px #3b4438;caret-color:var(--lime)}
 .script-view.editing p.empty{display:none}
+
+/* músicas tocadas até o fim */
+.track.played .track-info strong{color:#9aa39a}
+.track.played .num{color:#4f5a4a}
+.played-check{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--lime);color:#17200b;font-size:11px;font-weight:700;cursor:pointer;flex:none;margin-left:-6px}
+.played-info{display:flex;align-items:center;gap:8px}
+.played-info b{color:var(--lime);font-weight:500}
+.played-info button{font-size:9px;padding:4px 8px;background:transparent}
+.sequence-foot{flex-wrap:wrap;align-items:center}.sequence-foot>*{white-space:nowrap}
+.played-info:has(#clearPlayed[hidden]) {display:none}
+.sequence-foot .played-info{order:-1;flex-basis:100%;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #22262c;font-size:11px}
