@@ -43,7 +43,8 @@ type Track struct {
 	File     string  `json:"file"`
 	Duration float64 `json:"duration"`
 	Cues     []Cue   `json:"cues"`
-	Scene    string  `json:"scene,omitempty"` // título da cena do roteiro ligada a esta música
+	Scene    string  `json:"scene,omitempty"` // trecho do roteiro ligado a esta música
+	Notes    string  `json:"notes,omitempty"` // anotações do operador para esta música/cena
 }
 
 type Effect struct {

@@ -94,6 +94,12 @@ mark.hl-y{background:#f5e663}mark.hl-r{background:#ff8f8f}mark.hl-b{background:#
 .notes-head span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .scene-notes textarea{width:100%;resize:none;background:#0e1113;color:var(--text);border:1px solid #2f3630;border-radius:6px;padding:8px 10px;font:13px/1.5 'DM Sans',sans-serif;min-height:44px}
 .scene-notes textarea:focus{outline:none;border-color:var(--lime)}
-.script-body:not(:has(.scene-list button)) .scene-notes{display:none}
 .scene-music{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-bottom:8px}
 .scene-music select{flex:1;min-width:0;background:#0e1113;color:var(--text);border:1px solid #2f3630;border-radius:6px;padding:6px 8px;font-size:12px}
+.anchor-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11px}
+#anchorText{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6c766b}
+#anchorText.on{color:#c9d6b5;cursor:pointer}
+.anchor-row button{font-size:10px;padding:5px 8px;background:transparent;white-space:nowrap}
+.track.queued{background:#1b2230;box-shadow:inset 3px 0 0 #8fc7ff}
+.track.queued .num::after{content:'PRÓXIMA';display:block;font:600 7px 'DM Sans';letter-spacing:1px;color:#8fc7ff;margin-top:3px}
+[hidden]{display:none!important}

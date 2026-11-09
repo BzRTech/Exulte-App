@@ -13,6 +13,7 @@ const audioURL = file => '/audio/' + encodeURIComponent(file);
 const LONG_EFFECT = 90; // efeitos mais longos que isso tocam em streaming
 
 let state = { format: 'deixa-desktop-1', name: 'Meu espetáculo', tracks: [], effects: [], auto: false, musicVol: 80, fxVol: 80 };
+let queued = null; // música escolhida enquanto outra toca (entra na sequência)
 let selected = 0, lastTime = 0, ticker = 0, seeking = false, toastTimer, saveTimer, dirty = false;
 const fired = new Set();
 const active = new Map(); // efeitos tocando: id -> { stop(), el? }
@@ -204,7 +205,7 @@ function renderTracks() {
   $('#count').textContent = pad2(state.tracks.length);
   state.tracks.forEach((t, i) => {
     const row = document.createElement('div');
-    row.className = 'track' + (i === selected ? ' selected' : '') + (played.has(t.id) ? ' played' : '');
+    row.className = 'track' + (i === selected ? ' selected' : '') + (i === queued ? ' queued' : '') + (played.has(t.id) ? ' played' : '');
     row.innerHTML = `<span class="num">${pad2(i + 1)}</span><div class="track-info" tabindex="0" role="button"><strong></strong><small></small></div><span class="track-time">${fmt(t.duration)}</span><div class="row-actions"><button title="Mover para cima">↑</button><button title="Mover para baixo">↓</button><button title="Excluir faixa">×</button></div>`;
     row.querySelector('strong').textContent = t.name;
     row.querySelector('strong').title = t.name;
@@ -218,9 +219,9 @@ function renderTracks() {
     }
     row.querySelector('small').textContent = (t.cues.length === 1 ? '1 deixa' : `${t.cues.length} deixas`) + (t.scene ? ' · ✎ ' + t.scene : '');
     const info = row.querySelector('.track-info');
-    info.onclick = () => select(i);
+    info.onclick = () => pick(i);
     info.ondblclick = () => rename(t, 'música', renderTracks);
-    info.onkeydown = e => { if (e.key === 'Enter') select(i); };
+    info.onkeydown = e => { if (e.key === 'Enter') pick(i); };
     const [up, down, del] = row.querySelectorAll('button');
     up.disabled = i === 0;
     down.disabled = i === state.tracks.length - 1;
@@ -232,7 +233,7 @@ function renderTracks() {
   if (!state.tracks.length) list.innerHTML = '<div class="empty">Seu espetáculo começa aqui.<br>Importe uma música para preparar a primeira cena.</div>';
   list.scrollTop = top;
   updatePlayedInfo();
-  if (notesKey) renderSceneMusic();
+  showNotes();
   const sel = list.querySelector('.track.selected'); // mantém a faixa atual visível, só dentro da lista
   if (sel) {
     const y = sel.offsetTop - list.offsetTop;
@@ -269,7 +270,23 @@ function rename(item, kind, rerender) {
   save();
 }
 
+// Clique numa música: se outra estiver tocando, ela não é interrompida;
+// a escolhida fica como PRÓXIMA (▶Ⅰ ou o fim da atual a colocam em cena).
+function pick(i) {
+  if (!music.paused && i === selected) { queued = null; renderTracks(); return; } // não reinicia a música em cena
+  if (!music.paused) {
+    queued = queued === i ? null : i;
+    renderTracks();
+    const t = state.tracks[i];
+    if (queued != null && t?.scene) goToScene(t.scene);
+    if (queued != null) toast('Fica como próxima. A música atual continua tocando.');
+    return;
+  }
+  select(i);
+}
+function nextIndex() { return queued ?? Math.min(state.tracks.length - 1, selected + 1); }
 function select(i) {
+  queued = null;
   stopTicker();
   music.pause();
   music.removeAttribute('src');
@@ -368,7 +385,7 @@ music.onended = () => {
   markPlayed(state.tracks[selected]?.id);
   stopTicker();
   updatePlay();
-  if (state.auto && selected < state.tracks.length - 1) { select(selected + 1); toggle(); }
+  if (queued != null || (state.auto && selected < state.tracks.length - 1)) { const go = state.auto; select(nextIndex()); if (go) toggle(); }
 };
 music.onerror = () => { if (music.getAttribute('src')) toast('Áudio indisponível ou formato não suportado.'); };
 
@@ -582,7 +599,7 @@ $('#play').onclick = toggle;
 $('#stop').onclick = stopMusic;
 $('#panic').onclick = stopAll;
 $('#prev').onclick = () => select(Math.max(0, selected - 1));
-$('#next').onclick = () => select(Math.min(state.tracks.length - 1, selected + 1));
+$('#next').onclick = () => { const wasPlaying = !music.paused, q = queued != null; select(nextIndex()); if (wasPlaying && q) toggle(); };
 
 const seek = $('#seek');
 seek.addEventListener('pointerdown', () => { seeking = true; });
@@ -835,68 +852,63 @@ function markScene() {
   for (const b of btns) if (b._h.offsetTop - 40 <= view.scrollTop) cur = b;
   cur = cur || btns[0];
   btns.forEach(b => b.classList.toggle('current', b === cur));
-  showNotes(cur ? cur.title : null);
   cur?.scrollIntoView({ block: 'nearest' });
 }
 $('#scriptView').addEventListener('scroll', markScene, { passive: true });
 
-// ------------------------------------------------------------------ anotações por cena
-let notesKey = null;
-// leva o roteiro até a cena ligada à música
-function goToScene(title) {
-  const b = [...$('#sceneList').children].find(x => x.title === title);
-  if (!b) return;
-  const view = $('#scriptView');
-  view.scrollTo({ top: b._h.offsetTop - 12, behavior: 'smooth' });
+// ------------------------------------------------------------------ anotações por música
+// Num musical, cada música é uma cena: as anotações ficam na própria música.
+// A música pode ser ligada a um trecho do roteiro (📍); ao selecioná-la, o roteiro vai até lá.
+let notesKey = null; // id da música cujas anotações estão na caixa
+const notesTrack = () => state.tracks.find(t => t.id === notesKey);
+function lineEls() { return [...$('#scriptView').querySelectorAll('[data-line]')]; }
+function goToScene(text) {
+  const el = lineEls().find(x => x.textContent.trim() === text);
+  if (el) $('#scriptView').scrollTo({ top: el.offsetTop - 12, behavior: 'smooth' });
 }
-function renderSceneMusic() {
-  const sel = $('#sceneMusic');
-  sel.innerHTML = '<option value="">— nenhuma —</option>';
-  state.tracks.forEach((t, i) => {
-    const o = document.createElement('option');
-    o.value = t.id;
-    o.textContent = `${pad2(i + 1)} · ${t.name}`;
-    if (notesKey && t.scene === notesKey) o.selected = true;
-    sel.append(o);
-  });
-}
-$('#sceneMusic').onchange = e => {
-  if (!notesKey) return;
-  for (const t of state.tracks) if (t.scene === notesKey) delete t.scene;
-  const t = state.tracks.find(x => x.id === e.target.value);
-  if (t) t.scene = notesKey;
-  renderTracks();
-  save();
-};
 function growNotes() { const t = $('#notesText'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 200) + 'px'; }
-function showNotes(key) {
-  const box = $('#sceneNotes'), t = $('#notesText');
-  box.hidden = !key;
-  if (key === notesKey) return;
-  notesKey = key;
-  $('#notesScene').textContent = key || '';
-  renderSceneMusic();
-  t.value = (key && state.sceneNotes?.[key]) || '';
-  box.classList.toggle('has', !!t.value.trim());
+function showNotes() {
+  const idx = queued ?? selected, t = state.tracks[idx];
+  const box = $('#sceneNotes'), ta = $('#notesText');
+  box.hidden = !t;
+  if (!t) { notesKey = null; return; }
+  $('#notesScene').textContent = `${pad2(idx + 1)} · ${t.name}` + (queued != null ? ' (próxima)' : '');
+  if (notesKey !== t.id || document.activeElement !== ta) ta.value = t.notes || '';
+  notesKey = t.id;
+  box.classList.toggle('has', !!(t.notes || '').trim());
+  $('#anchorText').textContent = t.scene ? '📍 ' + t.scene : 'Não ligada a um trecho do roteiro';
+  $('#anchorText').classList.toggle('on', !!t.scene);
+  $('#anchorClear').hidden = !t.scene;
   growNotes();
 }
+function renderSceneMusic() { showNotes(); }
 $('#notesText').oninput = e => {
-  if (!notesKey) return;
-  state.sceneNotes = state.sceneNotes || {};
-  const v = e.target.value;
-  if (v.trim()) state.sceneNotes[notesKey] = v; else delete state.sceneNotes[notesKey];
-  $('#sceneNotes').classList.toggle('has', !!v.trim());
+  const t = notesTrack();
+  if (!t) return;
+  if (e.target.value.trim()) t.notes = e.target.value; else delete t.notes;
+  $('#sceneNotes').classList.toggle('has', !!e.target.value.trim());
   growNotes();
   save();
 };
+// liga a música ao trecho do roteiro que está no topo da tela agora
+$('#anchorSet').onclick = () => {
+  const t = notesTrack(), view = $('#scriptView');
+  if (!t) return;
+  const el = lineEls().find(x => x.offsetTop + x.offsetHeight > view.scrollTop + 4 && x.textContent.trim().length > 1);
+  if (!el) return toast('Role o roteiro até o trecho desta música e clique de novo.');
+  t.scene = el.textContent.trim().slice(0, 200);
+  renderTracks(); save();
+  toast('Música ligada a este trecho do roteiro.');
+};
+$('#anchorClear').onclick = () => { const t = notesTrack(); if (t) { delete t.scene; renderTracks(); save(); } };
+$('#anchorText').onclick = () => { const t = notesTrack(); if (t?.scene) goToScene(t.scene); };
 const sceneTitles = () => [...$('#sceneList').children].map(b => b.title);
-// se o título de uma cena mudar na edição, as anotações acompanham (pela posição)
+// se o título de uma cena mudar na edição, a ligação da música acompanha (pela posição)
 function carryNotes(before) {
-  const after = sceneTitles(), n = state.sceneNotes;
+  const after = sceneTitles();
   before.forEach((old, i) => {
     const neu = after[i];
     if (!neu || old === neu || after.includes(old)) return;
-    if (n && n[old] && !n[neu]) { n[neu] = n[old]; delete n[old]; }
     for (const t of state.tracks) if (t.scene === old) t.scene = neu;
   });
 }
@@ -910,7 +922,7 @@ function setEditing(on) {
   view.contentEditable = on ? 'true' : 'false';
   view.classList.toggle('editing', on);
   $('#scriptEdit').textContent = on ? '✓ Concluir' : '✎ Editar';
-  if (!on) { renderScript(); carryNotes(titlesBefore); renderTracks(); notesKey = undefined; markScene(); save(); }
+  if (!on) { renderScript(); carryNotes(titlesBefore); renderTracks(); markScene(); save(); }
   else {
     if (!(state.script || '').trim()) { view.innerHTML = '<p data-line="0"> </p>'; }
     view.focus();
@@ -1004,7 +1016,9 @@ function applyState() {
   $('#volValue').textContent = state.musicVol + '%';
   applyEq();
   renderEq();
-  notesKey = undefined;
+  queued = null;
+  // anotações antigas (por título de cena) passam para a música ligada
+  for (const t of state.tracks) if (!t.notes && t.scene && state.sceneNotes?.[t.scene]) t.notes = state.sceneNotes[t.scene];
   renderScript();
   if (document.body.classList.contains('with-script')) markScene();
   select(0);
