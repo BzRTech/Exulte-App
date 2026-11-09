@@ -216,7 +216,7 @@ function renderTracks() {
       ok.onclick = ev => { ev.stopPropagation(); played.delete(t.id); savePlayed(); renderTracks(); };
       row.querySelector('.num').after(ok);
     }
-    row.querySelector('small').textContent = t.cues.length === 1 ? '1 deixa' : `${t.cues.length} deixas`;
+    row.querySelector('small').textContent = (t.cues.length === 1 ? '1 deixa' : `${t.cues.length} deixas`) + (t.scene ? ' · ✎ ' + t.scene : '');
     const info = row.querySelector('.track-info');
     info.onclick = () => select(i);
     info.ondblclick = () => rename(t, 'música', renderTracks);
@@ -232,6 +232,7 @@ function renderTracks() {
   if (!state.tracks.length) list.innerHTML = '<div class="empty">Seu espetáculo começa aqui.<br>Importe uma música para preparar a primeira cena.</div>';
   list.scrollTop = top;
   updatePlayedInfo();
+  if (notesKey) renderSceneMusic();
   const sel = list.querySelector('.track.selected'); // mantém a faixa atual visível, só dentro da lista
   if (sel) {
     const y = sel.offsetTop - list.offsetTop;
@@ -293,6 +294,7 @@ function select(i) {
   renderTracks();
   renderCues();
   updatePlay();
+  if (t?.scene) goToScene(t.scene);
 }
 
 // ------------------------------------------------------------------ reprodução
@@ -781,6 +783,11 @@ for (const bt of document.querySelectorAll('#markBar button')) {
   bt.onmousedown = e => e.preventDefault(); // não perde a seleção
   bt.onclick = () => markSelection(bt.dataset.c || null);
 }
+// "CENA 1", "Cena 2 – ...", "CENA III" ou qualquer linha curta começando com CENA (não um parágrafo)
+function isSceneTitle(plain) {
+  const t = plain.trim();
+  return /^cena\s*(\d+|[ivxlc]+\b)/i.test(t) || (/^cena\b/i.test(t) && t.length <= 60);
+}
 const SCENE_RE = /^\s*(#+\s*|cena\b)/i;
 function renderScript() {
   const view = $('#scriptView'), list = $('#sceneList');
@@ -794,7 +801,7 @@ function renderScript() {
   let n = 0;
   text.split('\n').forEach((line, li) => {
     const { prefix, plain, colors } = parseLine(line);
-    const scene = !!prefix || /^\s*cena\b/i.test(plain);
+    const scene = !!prefix || isSceneTitle(plain);
     const el = document.createElement(scene ? 'h3' : 'p');
     el.dataset.line = li;
     if (prefix) el.dataset.prefix = prefix;
@@ -835,6 +842,32 @@ $('#scriptView').addEventListener('scroll', markScene, { passive: true });
 
 // ------------------------------------------------------------------ anotações por cena
 let notesKey = null;
+// leva o roteiro até a cena ligada à música
+function goToScene(title) {
+  const b = [...$('#sceneList').children].find(x => x.title === title);
+  if (!b) return;
+  const view = $('#scriptView');
+  view.scrollTo({ top: b._h.offsetTop - 12, behavior: 'smooth' });
+}
+function renderSceneMusic() {
+  const sel = $('#sceneMusic');
+  sel.innerHTML = '<option value="">— nenhuma —</option>';
+  state.tracks.forEach((t, i) => {
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = `${pad2(i + 1)} · ${t.name}`;
+    if (notesKey && t.scene === notesKey) o.selected = true;
+    sel.append(o);
+  });
+}
+$('#sceneMusic').onchange = e => {
+  if (!notesKey) return;
+  for (const t of state.tracks) if (t.scene === notesKey) delete t.scene;
+  const t = state.tracks.find(x => x.id === e.target.value);
+  if (t) t.scene = notesKey;
+  renderTracks();
+  save();
+};
 function growNotes() { const t = $('#notesText'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 200) + 'px'; }
 function showNotes(key) {
   const box = $('#sceneNotes'), t = $('#notesText');
@@ -842,6 +875,7 @@ function showNotes(key) {
   if (key === notesKey) return;
   notesKey = key;
   $('#notesScene').textContent = key || '';
+  renderSceneMusic();
   t.value = (key && state.sceneNotes?.[key]) || '';
   box.classList.toggle('has', !!t.value.trim());
   growNotes();
@@ -859,10 +893,11 @@ const sceneTitles = () => [...$('#sceneList').children].map(b => b.title);
 // se o título de uma cena mudar na edição, as anotações acompanham (pela posição)
 function carryNotes(before) {
   const after = sceneTitles(), n = state.sceneNotes;
-  if (!n) return;
   before.forEach((old, i) => {
     const neu = after[i];
-    if (neu && old !== neu && n[old] && !n[neu] && !after.includes(old)) { n[neu] = n[old]; delete n[old]; }
+    if (!neu || old === neu || after.includes(old)) return;
+    if (n && n[old] && !n[neu]) { n[neu] = n[old]; delete n[old]; }
+    for (const t of state.tracks) if (t.scene === old) t.scene = neu;
   });
 }
 // Edição direto no texto, com as marcas coloridas visíveis (sem códigos)
@@ -875,7 +910,7 @@ function setEditing(on) {
   view.contentEditable = on ? 'true' : 'false';
   view.classList.toggle('editing', on);
   $('#scriptEdit').textContent = on ? '✓ Concluir' : '✎ Editar';
-  if (!on) { renderScript(); carryNotes(titlesBefore); notesKey = undefined; markScene(); save(); }
+  if (!on) { renderScript(); carryNotes(titlesBefore); renderTracks(); notesKey = undefined; markScene(); save(); }
   else {
     if (!(state.script || '').trim()) { view.innerHTML = '<p data-line="0"> </p>'; }
     view.focus();

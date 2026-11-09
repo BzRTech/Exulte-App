@@ -95,3 +95,5 @@ mark.hl-y{background:#f5e663}mark.hl-r{background:#ff8f8f}mark.hl-b{background:#
 .scene-notes textarea{width:100%;resize:none;background:#0e1113;color:var(--text);border:1px solid #2f3630;border-radius:6px;padding:8px 10px;font:13px/1.5 'DM Sans',sans-serif;min-height:44px}
 .scene-notes textarea:focus{outline:none;border-color:var(--lime)}
 .script-body:not(:has(.scene-list button)) .scene-notes{display:none}
+.scene-music{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-bottom:8px}
+.scene-music select{flex:1;min-width:0;background:#0e1113;color:var(--text);border:1px solid #2f3630;border-radius:6px;padding:6px 8px;font-size:12px}
