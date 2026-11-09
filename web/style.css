@@ -56,3 +56,13 @@ body.side-mini .brand{margin-bottom:30px}
 body.side-mini nav{width:100%}
 body.side-mini .nav{justify-content:center;padding:12px 0;font-size:18px}
 @media(max-width:800px){.side-toggle{display:none}}
+
+/* marca-texto do roteiro */
+mark{color:#111;border-radius:3px;padding:0 2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+mark.hl-y{background:#f5e663}mark.hl-r{background:#ff8f8f}mark.hl-b{background:#8fc7ff}
+.script-view h3 mark{color:#111}
+.mark-bar{position:absolute;z-index:6;display:flex;align-items:center;gap:4px;background:#22272b;border:1px solid #3b4438;border-radius:9px;padding:5px 6px;box-shadow:0 6px 20px #0008;font-size:11px;color:var(--muted)}
+.mark-bar span{padding:0 4px}
+.mark-bar button{padding:4px 8px;border:0;background:transparent;font-size:16px;line-height:1}
+.mark-bar .hl-y{color:#f5e663}.mark-bar .hl-r{color:#ff8f8f}.mark-bar .hl-b{color:#8fc7ff}
+.scene-list button.marked::before{content:'●';color:#f5e663;margin-right:6px}

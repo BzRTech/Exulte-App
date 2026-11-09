@@ -649,6 +649,75 @@ $('#eqOn').onchange = e => { eqState().on = e.target.checked; $('#eqBands').clas
 $('#eqReset').onclick = () => { eqState().gains = EQ_BANDS.map(() => 0); renderEq(); applyEq(); save(); };
 // ------------------------------------------------------------------ roteiro
 // Um texto único do espetáculo; linhas que começam com "CENA" ou "#" dividem as cenas.
+// Marca-texto: no texto fica ==trecho== (amarelo), ==r:trecho== (vermelho), ==b:trecho== (azul).
+const MARK_RE = /==(?:([yrb]):)?(.+?)==/g;
+function parseLine(line) {
+  const prefix = (line.match(/^\s*#+\s*/) || [''])[0];
+  const body = line.slice(prefix.length);
+  let plain = '', colors = [], last = 0;
+  for (const m of body.matchAll(MARK_RE)) {
+    const before = body.slice(last, m.index);
+    plain += before; colors.push(...Array(before.length).fill(null));
+    plain += m[2]; colors.push(...Array(m[2].length).fill(m[1] || 'y'));
+    last = m.index + m[0].length;
+  }
+  const rest = body.slice(last);
+  plain += rest; colors.push(...Array(rest.length).fill(null));
+  return { prefix, plain, colors };
+}
+function runs(plain, colors) {
+  const out = [];
+  for (let i = 0; i < plain.length;) {
+    let j = i;
+    while (j < plain.length && colors[j] === colors[i]) j++;
+    out.push([plain.slice(i, j), colors[i]]);
+    i = j;
+  }
+  return out;
+}
+function serializeLine(prefix, plain, colors) {
+  return prefix + runs(plain, colors).map(([t, c]) => !c ? t : c === 'y' ? `==${t}==` : `==${c}:${t}==`).join('');
+}
+// aplica (ou limpa, color=null) a marca no trecho selecionado do roteiro
+function markSelection(color) {
+  const sel = getSelection();
+  if (!sel.rangeCount || sel.isCollapsed) return;
+  const r = sel.getRangeAt(0), view = $('#scriptView');
+  const lineOf = node => (node.nodeType === 1 ? node : node.parentElement)?.closest('[data-line]');
+  const startEl = lineOf(r.startContainer), endEl = lineOf(r.endContainer);
+  if (!startEl || !endEl || !view.contains(startEl)) return;
+  const offIn = (el, node, off) => { const x = document.createRange(); x.selectNodeContents(el); x.setEnd(node, off); return x.toString().length; };
+  const lines = (state.script || '').split('\n');
+  const a = +startEl.dataset.line, b = +endEl.dataset.line;
+  for (let li = a; li <= b; li++) {
+    const el = view.querySelector(`[data-line="${li}"]`);
+    const { prefix, plain, colors } = parseLine(lines[li]);
+    const from = li === a ? offIn(el, r.startContainer, r.startOffset) : 0;
+    const to = li === b ? offIn(el, r.endContainer, r.endOffset) : plain.length;
+    for (let i = Math.max(0, from); i < Math.min(plain.length, to); i++) colors[i] = color;
+    lines[li] = serializeLine(prefix, plain, colors);
+  }
+  const top = view.scrollTop;
+  state.script = lines.join('\n');
+  sel.removeAllRanges();
+  hideMarkBar();
+  renderScript();
+  view.scrollTop = top;
+  save();
+}
+function hideMarkBar() { $('#markBar').hidden = true; }
+document.addEventListener('selectionchange', () => {
+  const bar = $('#markBar'), sel = getSelection(), view = $('#scriptView');
+  if (!sel.rangeCount || sel.isCollapsed || view.hidden || !view.contains(sel.anchorNode)) return hideMarkBar();
+  const rect = sel.getRangeAt(0).getBoundingClientRect(), box = $('.script-main').getBoundingClientRect();
+  bar.hidden = false;
+  bar.style.top = Math.max(4, rect.top - box.top - bar.offsetHeight - 8) + 'px';
+  bar.style.left = Math.min(box.width - bar.offsetWidth - 4, Math.max(4, rect.left - box.left + rect.width / 2 - bar.offsetWidth / 2)) + 'px';
+});
+for (const bt of document.querySelectorAll('#markBar button')) {
+  bt.onmousedown = e => e.preventDefault(); // não perde a seleção
+  bt.onclick = () => markSelection(bt.dataset.c || null);
+}
 const SCENE_RE = /^\s*(#+\s*|cena\b)/i;
 function renderScript() {
   const view = $('#scriptView'), list = $('#sceneList');
@@ -660,24 +729,30 @@ function renderScript() {
     view.innerHTML = '<p class="empty">Nenhum roteiro ainda. Clique em <b>✎ Editar</b> e cole ou escreva o texto.</p>';
   }
   let n = 0;
-  for (const line of text.split('\n')) {
-    if (SCENE_RE.test(line)) {
-      const h = document.createElement('h3');
-      h.textContent = line.replace(/^\s*#+\s*/, '').trim();
-      view.append(h);
-      const b = document.createElement('button');
-      b.textContent = h.textContent;
-      b.title = h.textContent;
-      b.onclick = () => view.scrollTo({ top: h.offsetTop - 12, behavior: 'smooth' });
-      b._h = h;
-      list.append(b);
-      n++;
-    } else {
-      const p = document.createElement('p');
-      p.textContent = line || ' ';
-      view.append(p);
+  text.split('\n').forEach((line, li) => {
+    const { prefix, plain, colors } = parseLine(line);
+    const scene = !!prefix || /^\s*cena\b/i.test(plain);
+    const el = document.createElement(scene ? 'h3' : 'p');
+    el.dataset.line = li;
+    if (!plain) el.textContent = ' ';
+    else for (const [t, c] of runs(plain, colors)) {
+      if (!c) { el.append(t); continue; }
+      const m = document.createElement('mark');
+      m.className = 'hl-' + c;
+      m.textContent = t;
+      el.append(m);
     }
-  }
+    view.append(el);
+    if (scene) {
+      const bt = document.createElement('button');
+      bt.textContent = bt.title = plain.trim();
+      if (colors.some(Boolean)) bt.classList.add('marked');
+      bt.onclick = () => view.scrollTo({ top: el.offsetTop - 12, behavior: 'smooth' });
+      bt._h = el;
+      list.append(bt);
+      n++;
+    }
+  });
   $('#sceneCount').textContent = pad2(n);
   list.hidden = !n;
   $('.script-body').style.gridTemplateColumns = n ? '' : '1fr';
