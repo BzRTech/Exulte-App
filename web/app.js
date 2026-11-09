@@ -701,6 +701,15 @@ $('#scriptText').oninput = e => { state.script = e.target.value; save(); };
 const setFs = d => { state.scriptFs = Math.min(40, Math.max(12, (state.scriptFs || 18) + d)); renderScript(); save(); };
 $('#fsUp').onclick = () => setFs(2);
 $('#fsDown').onclick = () => setFs(-2);
+function sideMini(on) {
+  document.body.classList.toggle('side-mini', on);
+  $('#sideToggle').title = on ? 'Expandir o menu' : 'Encolher o menu';
+  for (const b of document.querySelectorAll('.nav')) b.title = on ? b.querySelector('span')?.textContent || '' : '';
+  try { localStorage.setItem('deixa-menu', on ? 'mini' : ''); } catch { }
+}
+$('#sideToggle').onclick = () => sideMini(!document.body.classList.contains('side-mini'));
+try { if (localStorage.getItem('deixa-menu') === 'mini') sideMini(true); } catch { }
+
 function showScript(on) {
   document.body.classList.toggle('with-script', on);
   $('#scriptNav').classList.toggle('active', on);

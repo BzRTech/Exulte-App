@@ -41,3 +41,18 @@ body.with-script .script-view,body.with-script .script-text{padding:18px 20px 40
 @media(max-width:1500px){body.with-script{--script-w:360px}body.with-script .workspace{grid-template-columns:1fr 1fr}}
 @media(max-width:1250px){body.with-script{--script-w:320px}body.with-script aside{width:150px}body.with-script main{margin-left:150px}}
 @media(max-width:800px){body.with-script .script{position:static;width:auto;height:80vh;border-width:1px;border-radius:12px;margin:18px}body.with-script main{margin-right:0}}
+
+/* menu lateral encolhível */
+.brand b{font-weight:inherit}
+.side-toggle{position:absolute;top:14px;right:10px;padding:4px 8px;font-size:13px;background:transparent;border-color:transparent;color:var(--muted)}
+.side-toggle:hover{color:var(--lime)}
+aside{transition:width .2s}main{transition:margin-left .2s}
+body.side-mini aside{width:68px!important;padding:52px 10px 22px;align-items:center}
+body.side-mini main{margin-left:68px!important}
+body.side-mini .side-toggle{right:auto;left:50%;transform:translateX(-50%) rotate(180deg)}
+body.side-mini .brand{font-size:34px;letter-spacing:0}
+body.side-mini .brand b,body.side-mini .tag,body.side-mini .side-bottom,body.side-mini .nav span{display:none}
+body.side-mini .brand{margin-bottom:30px}
+body.side-mini nav{width:100%}
+body.side-mini .nav{justify-content:center;padding:12px 0;font-size:18px}
+@media(max-width:800px){.side-toggle{display:none}}
