@@ -85,3 +85,13 @@ mark.hl-y{background:#f5e663}mark.hl-r{background:#ff8f8f}mark.hl-b{background:#
 .sequence-foot{flex-wrap:wrap;align-items:center}.sequence-foot>*{white-space:nowrap}
 .played-info:has(#clearPlayed[hidden]) {display:none}
 .sequence-foot .played-info{order:-1;flex-basis:100%;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #22262c;font-size:11px}
+
+/* anotações da cena (em cima do roteiro) */
+.scene-notes{border-bottom:1px solid #22262c;padding:10px 14px 12px;background:#161a17}
+.scene-notes.has{background:#1d2418}
+.notes-head{display:flex;gap:8px;align-items:baseline;font-size:11px;margin-bottom:6px;color:var(--muted)}
+.notes-head b{color:var(--lime);font-weight:600;white-space:nowrap}
+.notes-head span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scene-notes textarea{width:100%;resize:none;background:#0e1113;color:var(--text);border:1px solid #2f3630;border-radius:6px;padding:8px 10px;font:13px/1.5 'DM Sans',sans-serif;min-height:44px}
+.scene-notes textarea:focus{outline:none;border-color:var(--lime)}
+.script-body:not(:has(.scene-list button)) .scene-notes{display:none}

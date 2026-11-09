@@ -828,19 +828,54 @@ function markScene() {
   for (const b of btns) if (b._h.offsetTop - 40 <= view.scrollTop) cur = b;
   cur = cur || btns[0];
   btns.forEach(b => b.classList.toggle('current', b === cur));
+  showNotes(cur ? cur.title : null);
   cur?.scrollIntoView({ block: 'nearest' });
 }
 $('#scriptView').addEventListener('scroll', markScene, { passive: true });
+
+// ------------------------------------------------------------------ anotações por cena
+let notesKey = null;
+function growNotes() { const t = $('#notesText'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 200) + 'px'; }
+function showNotes(key) {
+  const box = $('#sceneNotes'), t = $('#notesText');
+  box.hidden = !key;
+  if (key === notesKey) return;
+  notesKey = key;
+  $('#notesScene').textContent = key || '';
+  t.value = (key && state.sceneNotes?.[key]) || '';
+  box.classList.toggle('has', !!t.value.trim());
+  growNotes();
+}
+$('#notesText').oninput = e => {
+  if (!notesKey) return;
+  state.sceneNotes = state.sceneNotes || {};
+  const v = e.target.value;
+  if (v.trim()) state.sceneNotes[notesKey] = v; else delete state.sceneNotes[notesKey];
+  $('#sceneNotes').classList.toggle('has', !!v.trim());
+  growNotes();
+  save();
+};
+const sceneTitles = () => [...$('#sceneList').children].map(b => b.title);
+// se o título de uma cena mudar na edição, as anotações acompanham (pela posição)
+function carryNotes(before) {
+  const after = sceneTitles(), n = state.sceneNotes;
+  if (!n) return;
+  before.forEach((old, i) => {
+    const neu = after[i];
+    if (neu && old !== neu && n[old] && !n[neu] && !after.includes(old)) { n[neu] = n[old]; delete n[old]; }
+  });
+}
 // Edição direto no texto, com as marcas coloridas visíveis (sem códigos)
 let editTimer;
 function syncFromEditor() { state.script = linesToText(domToScript($('#scriptView'))); save(); }
 function setEditing(on) {
   const view = $('#scriptView');
+  const titlesBefore = sceneTitles();
   if (!on && view.isContentEditable) { clearTimeout(editTimer); syncFromEditor(); }
   view.contentEditable = on ? 'true' : 'false';
   view.classList.toggle('editing', on);
   $('#scriptEdit').textContent = on ? '✓ Concluir' : '✎ Editar';
-  if (!on) renderScript();
+  if (!on) { renderScript(); carryNotes(titlesBefore); notesKey = undefined; markScene(); save(); }
   else {
     if (!(state.script || '').trim()) { view.innerHTML = '<p data-line="0"> </p>'; }
     view.focus();
@@ -934,6 +969,7 @@ function applyState() {
   $('#volValue').textContent = state.musicVol + '%';
   applyEq();
   renderEq();
+  notesKey = undefined;
   renderScript();
   if (document.body.classList.contains('with-script')) markScene();
   select(0);

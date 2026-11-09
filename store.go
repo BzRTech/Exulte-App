@@ -64,6 +64,8 @@ type Project struct {
 	Eq       *EQ      `json:"eq,omitempty"`
 	Script   string   `json:"script,omitempty"`
 	ScriptFs float64  `json:"scriptFs,omitempty"`
+	// anotações do operador por cena (chave: título da cena no roteiro)
+	SceneNotes map[string]string `json:"sceneNotes,omitempty"`
 }
 
 // EQ é o equalizador geral (músicas e efeitos): ganho em dB de cada faixa.
@@ -172,6 +174,11 @@ func (s *Store) validate(p *Project) error {
 	p.MusicVol = clamp(p.MusicVol, 0, 100)
 	if len(p.Script) > 2<<20 {
 		p.Script = p.Script[:2<<20]
+	}
+	for k, v := range p.SceneNotes {
+		if len(p.SceneNotes) > 2000 || len(k) > 500 || len(v) > 20000 {
+			delete(p.SceneNotes, k)
+		}
 	}
 	if p.ScriptFs != 0 {
 		p.ScriptFs = clamp(p.ScriptFs, 12, 40)
