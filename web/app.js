@@ -701,7 +701,15 @@ $('#scriptText').oninput = e => { state.script = e.target.value; save(); };
 const setFs = d => { state.scriptFs = Math.min(40, Math.max(12, (state.scriptFs || 18) + d)); renderScript(); save(); };
 $('#fsUp').onclick = () => setFs(2);
 $('#fsDown').onclick = () => setFs(-2);
-$('#scriptNav').onclick = () => $('#scriptPanel').scrollIntoView({ behavior: 'smooth' });
+function showScript(on) {
+  document.body.classList.toggle('with-script', on);
+  $('#scriptNav').classList.toggle('active', on);
+  try { localStorage.setItem('deixa-roteiro', on ? '1' : '0'); } catch { }
+  if (on) markScene();
+}
+$('#scriptClose') && ($('#scriptClose').onclick = () => showScript(false));
+$('#scriptNav').onclick = () => showScript(!document.body.classList.contains('with-script'));
+try { if (localStorage.getItem('deixa-roteiro') === '1') showScript(true); } catch { }
 $('#guide').onclick = () => $('#guideDialog').showModal();
 $('#closeGuide').onclick = () => $('#guideDialog').close();
 $('#desk').onclick = () => scrollTo({ top: 0, behavior: 'smooth' });
@@ -758,6 +766,7 @@ function applyState() {
   applyEq();
   renderEq();
   renderScript();
+  if (document.body.classList.contains('with-script')) markScene();
   select(0);
   renderPads();
 }

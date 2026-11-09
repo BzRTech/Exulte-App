@@ -25,3 +25,19 @@ dialog label.eq-on{display:flex;align-items:center;gap:10px;font-size:14px}
 .script-view h3:first-child{margin-top:0;border-top:0}
 .script-view p{font-size:inherit;color:var(--text);margin:0 0 .2em;line-height:inherit}
 @media(max-width:800px){.script-body{grid-template-columns:1fr;height:auto}.scene-list{border-right:0;border-bottom:1px solid #22262c;display:flex;gap:4px;overflow-x:auto}.scene-list button{width:auto}.script-main{height:60vh}}
+
+/* roteiro como coluna fixa à direita, na mesma tela da mesa */
+.script{display:none}
+body.with-script .script{display:flex;flex-direction:column;position:fixed;top:0;right:0;bottom:0;width:var(--script-w,420px);margin:0;border-radius:0;border-width:0 0 0 1px;z-index:5}
+body.with-script main{margin-right:var(--script-w,420px)}
+body.with-script .script .panel-head{flex-wrap:wrap;padding:18px 18px 14px}
+body.with-script .script .panel-head p{display:none}
+body.with-script .script-body{display:flex;flex-direction:column;flex:1;height:auto;min-height:0}
+body.with-script .scene-list{display:flex;flex-wrap:wrap;gap:4px;border-right:0;border-bottom:1px solid #22262c;max-height:30%;padding:8px}
+body.with-script .scene-list button{width:auto;max-width:100%;padding:6px 9px;font-size:11px;border:1px solid #2c3230}
+body.with-script .script-main{flex:1}
+body.with-script .script-view,body.with-script .script-text{padding:18px 20px 40vh}
+#scriptNav.active{background:#242b1d;color:var(--lime)}
+@media(max-width:1500px){body.with-script{--script-w:360px}body.with-script .workspace{grid-template-columns:1fr 1fr}}
+@media(max-width:1250px){body.with-script{--script-w:320px}body.with-script aside{width:150px}body.with-script main{margin-left:150px}}
+@media(max-width:800px){body.with-script .script{position:static;width:auto;height:80vh;border-width:1px;border-radius:12px;margin:18px}body.with-script main{margin-right:0}}
