@@ -164,15 +164,18 @@ async function trigger(id, scheduled = false) {
   if (buffer) {
     const src = ctx.createBufferSource();
     src.buffer = buffer;
-    src.connect(fx.gain);
-    handle = { stop: () => { try { src.stop(); } catch { } } };
+    const g = ctx.createGain(); // volume próprio do efeito
+    g.gain.value = effVol(e);
+    src.connect(g).connect(fx.gain);
+    handle = { g, stop: () => { try { src.stop(); } catch { } } };
     src.onended = () => { if (active.get(id) === handle) { active.delete(id); updatePads(); } };
     src.start();
   } else {
     const el = new Audio(audioURL(e.file));
-    el.volume = state.fxVol / 100;
-    routeElement(el);
-    handle = { el, stop: () => el.pause() };
+    const g = ctx.createGain();
+    g.gain.value = effVol(e);
+    try { ctx.createMediaElementSource(el).connect(g).connect(fx.gain); } catch { el.volume = Math.min(1, state.fxVol / 100 * effVol(e)); }
+    handle = { el, g, stop: () => el.pause() };
     el.onended = () => { if (active.get(id) === handle) { active.delete(id); updatePads(); } };
     try { await el.play(); } catch { toast('Este efeito não pôde ser reproduzido.'); return updatePads(); }
   }
@@ -393,6 +396,74 @@ music.onerror = () => { if (music.getAttribute('src')) toast('Áudio indisponív
 
 const glyphs = ['✧', '≋', 'ϟ', '✳'];
 
+// ------------------------------------------------------------------ volume próprio de cada efeito
+const effVol = e => (e.vol || 100) / 100;
+let fxEditId = null;
+function openFxVol(e) {
+  fxEditId = e.id;
+  $('#fxVolName').textContent = e.name;
+  $('#fxVolRange').value = e.vol || 100;
+  showFxVol();
+  $('#fxVolDialog').showModal();
+}
+function showFxVol() {
+  const v = +$('#fxVolRange').value;
+  const db = 20 * Math.log10(v / 100);
+  $('#fxVolValue').textContent = `${v}%  (${db >= 0 ? '+' : ''}${db.toFixed(1)} dB)`;
+}
+function setFxVol(v) {
+  const e = state.effects.find(x => x.id === fxEditId);
+  if (!e) return;
+  v = Math.max(1, Math.min(300, Math.round(v)));
+  if (v === 100) delete e.vol; else e.vol = v;
+  $('#fxVolRange').value = v;
+  showFxVol();
+  const h = active.get(e.id);
+  if (h?.g) h.g.gain.setTargetAtTime(effVol(e), fx.ctx.currentTime, 0.02);
+  renderPads();
+  save();
+}
+// mede o volume médio (RMS) do efeito e calcula o ganho para chegar a um nível padrão
+function autoLevel(buffer) {
+  let sum = 0, n = 0, peak = 0;
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    const d = buffer.getChannelData(c);
+    for (let i = 0; i < d.length; i += 4) { const x = Math.abs(d[i]); sum += x * x; n++; if (x > peak) peak = x; }
+  }
+  const rms = Math.sqrt(sum / Math.max(1, n));
+  if (rms < 1e-5) return 100;
+  let g = 0.1 / rms;                   // alvo: −20 dBFS de média
+  if (peak * g > 0.98) g = 0.98 / peak; // sem estourar (clipar)
+  return g * 100;
+}
+$('#fxVolRange').oninput = e => setFxVol(+e.target.value);
+$('#fxVolReset').onclick = () => setFxVol(100);
+$('#fxVolAuto').onclick = async () => {
+  const e = state.effects.find(x => x.id === fxEditId);
+  const b = e && (fx.buffers.get(e.file) || await loadBuffer(e));
+  if (!b) return toast('Efeito muito longo para medir: ajuste na mão.');
+  setFxVol(autoLevel(b));
+  toast('Volume ajustado para o nível padrão.');
+};
+$('#fxVolTest').onclick = () => { if (fxEditId) trigger(fxEditId, true); };
+$('#fxVolClose').onclick = () => $('#fxVolDialog').close();
+$('#fxVolDialog').addEventListener('close', () => { fxEditId = null; });
+$('#fxLevelAll').onclick = async () => {
+  if (!state.effects.length) return;
+  if (!confirm('Igualar o volume de todos os efeitos para um nível padrão? (dá para ajustar cada um depois)')) return;
+  toast('Medindo os efeitos…', 0);
+  let ok = 0;
+  for (const e of state.effects) {
+    const b = fx.buffers.get(e.file) || await loadBuffer(e);
+    if (!b) continue;
+    const v = Math.max(1, Math.min(300, Math.round(autoLevel(b))));
+    if (v === 100) delete e.vol; else e.vol = v;
+    ok++;
+  }
+  renderPads(); save();
+  toast(`${ok} efeito(s) igualado(s).` + (ok < state.effects.length ? ' Os muito longos ficaram como estavam.' : ''));
+};
+
 function renderPads() {
   const p = $('#pads');
   p.replaceChildren();
@@ -401,11 +472,15 @@ function renderPads() {
     const b = document.createElement('button');
     b.className = 'pad';
     b.dataset.id = e.id;
-    b.innerHTML = `<span style="font-size:19px">${glyphs[i % 4]}</span><span class="key">${i < 9 ? i + 1 : 'FX'}</span><strong></strong><small></small><span class="pad-remove" role="button" tabindex="0" aria-label="Excluir efeito">×</span>`;
+    b.innerHTML = `<span style="font-size:19px">${glyphs[i % 4]}</span><span class="key">${i < 9 ? i + 1 : 'FX'}</span><strong></strong><small></small><span class="pad-remove" role="button" tabindex="0" aria-label="Excluir efeito">×</span><span class="pad-vol" role="button" tabindex="0" title="Volume deste efeito">🔊 ${e.vol || 100}%</span>`;
     b.querySelector('strong').textContent = e.name;
     b.title = 'Clique para tocar · duplo clique no nome para renomear';
     b.onclick = () => trigger(e.id);
     b.querySelector('strong').ondblclick = ev => { ev.stopPropagation(); rename(e, 'efeito', renderPads); };
+    const pv = b.querySelector('.pad-vol');
+    pv.classList.toggle('changed', !!e.vol);
+    pv.onclick = ev => { ev.stopPropagation(); openFxVol(e); };
+    pv.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); ev.stopPropagation(); openFxVol(e); } };
     const remove = b.querySelector('.pad-remove');
     remove.onclick = ev => {
       ev.stopPropagation();
@@ -627,7 +702,6 @@ $('#musicVol').oninput = e => {
 $('#fxVol').oninput = e => {
   state.fxVol = +e.target.value;
   if (fx.gain) fx.gain.gain.setTargetAtTime(state.fxVol / 100, fx.ctx.currentTime, 0.02);
-  for (const h of active.values()) if (h.el) h.el.volume = state.fxVol / 100;
   save();
 };
 $('#clearPlayed').onclick = () => {

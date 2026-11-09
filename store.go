@@ -53,6 +53,7 @@ type Effect struct {
 	File     string  `json:"file"`
 	Duration float64 `json:"duration"`
 	Builtin  bool    `json:"builtin,omitempty"`
+	Vol      float64 `json:"vol,omitempty"` // volume próprio do efeito, em % (vazio = 100)
 }
 
 type Project struct {
@@ -174,6 +175,11 @@ func (s *Store) validate(p *Project) error {
 		}
 	}
 	p.MusicVol = clamp(p.MusicVol, 0, 100)
+	for i := range p.Effects {
+		if p.Effects[i].Vol != 0 {
+			p.Effects[i].Vol = clamp(p.Effects[i].Vol, 1, 300)
+		}
+	}
 	if len(p.Script) > 2<<20 {
 		p.Script = p.Script[:2<<20]
 	}

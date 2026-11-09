@@ -108,3 +108,12 @@ mark.hl-y{background:#f5e663}mark.hl-r{background:#ff8f8f}mark.hl-b{background:#
 #guideDialog p{margin:0 0 8px;font-size:12.5px;color:#b8bfb8}
 #guideDialog b{color:var(--text)}
 .mark-sep{width:1px;height:18px;background:#3b4438;margin:0 2px}.mark-bar .scene-btn{font-size:11px;color:var(--lime);border:1px solid #3b4438;padding:4px 8px;border-radius:6px}
+
+/* volume próprio dos efeitos */
+.pad-vol{position:absolute;left:8px;bottom:8px;font-size:8px;opacity:.55;border-radius:4px;padding:1px 4px}
+.pad-vol:hover{opacity:1;background:#ffffff14}.pad-vol.changed{opacity:.95;color:var(--lime)}
+.pad small{margin-bottom:12px}
+#fxVolDialog input[type=range]{width:100%;padding:0;margin:14px 0 6px}
+.fxvol-value{font:600 20px 'Space Grotesk',sans-serif;color:var(--lime);text-align:center;margin-bottom:6px;white-space:pre}
+#fxVolDialog .dialog-actions{flex-wrap:wrap}
+.effects-foot .level-all{font-size:9px;padding:5px 8px;background:transparent;white-space:nowrap}
