@@ -62,6 +62,8 @@ type Project struct {
 	MusicVol float64  `json:"musicVol"`
 	FxVol    float64  `json:"fxVol"`
 	Eq       *EQ      `json:"eq,omitempty"`
+	Script   string   `json:"script,omitempty"`
+	ScriptFs float64  `json:"scriptFs,omitempty"`
 }
 
 // EQ é o equalizador geral (músicas e efeitos): ganho em dB de cada faixa.
@@ -168,6 +170,12 @@ func (s *Store) validate(p *Project) error {
 		}
 	}
 	p.MusicVol = clamp(p.MusicVol, 0, 100)
+	if len(p.Script) > 2<<20 {
+		p.Script = p.Script[:2<<20]
+	}
+	if p.ScriptFs != 0 {
+		p.ScriptFs = clamp(p.ScriptFs, 12, 40)
+	}
 	if p.Eq != nil {
 		if len(p.Eq.Gains) > 10 {
 			p.Eq.Gains = p.Eq.Gains[:10]

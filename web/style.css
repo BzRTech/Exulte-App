@@ -10,3 +10,18 @@ dialog label.eq-on{display:flex;align-items:center;gap:10px;font-size:14px}
 .eq-band output{color:var(--text);font-variant-numeric:tabular-nums;min-width:4.5ch;text-align:center}
 .eq-band input{writing-mode:vertical-lr;direction:rtl;height:150px;width:28px;accent-color:var(--lime);padding:0}
 .eq-bands.off{opacity:.45}
+
+.script{margin-top:22px}
+.script-tools{display:flex;gap:8px}
+.script-tools button{font-size:11px;padding:9px 11px}
+.script-body{display:grid;grid-template-columns:200px 1fr;border-top:1px solid #22262c;height:min(70vh,640px)}
+.scene-list{overflow:auto;border-right:1px solid #22262c;padding:10px}
+.scene-list button{display:block;width:100%;text-align:left;justify-content:start;border:0;background:transparent;color:#a3aaad;font-size:12px;padding:9px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scene-list button.current{background:#242b1d;color:var(--lime)}
+.script-main{position:relative;min-height:0}
+.script-view,.script-text{position:absolute;inset:0;overflow:auto;padding:22px 30px 50vh;line-height:1.65;white-space:pre-wrap;color:var(--text)}
+.script-text{width:100%;height:100%;resize:none;background:#0e1113;border:0;font:inherit;line-height:1.65;padding-bottom:22px}
+.script-view h3{font:600 1.15em 'Space Grotesk',sans-serif;color:var(--lime);margin:1.4em 0 .5em;padding-top:.6em;border-top:1px solid #2a2f2a}
+.script-view h3:first-child{margin-top:0;border-top:0}
+.script-view p{font-size:inherit;color:var(--text);margin:0 0 .2em;line-height:inherit}
+@media(max-width:800px){.script-body{grid-template-columns:1fr;height:auto}.scene-list{border-right:0;border-bottom:1px solid #22262c;display:flex;gap:4px;overflow-x:auto}.scene-list button{width:auto}.script-main{height:60vh}}

@@ -647,6 +647,61 @@ $('#eqOpen').onclick = () => { renderEq(); $('#eqDialog').showModal(); };
 $('#eqClose').onclick = () => $('#eqDialog').close();
 $('#eqOn').onchange = e => { eqState().on = e.target.checked; $('#eqBands').classList.toggle('off', !e.target.checked); applyEq(); save(); };
 $('#eqReset').onclick = () => { eqState().gains = EQ_BANDS.map(() => 0); renderEq(); applyEq(); save(); };
+// ------------------------------------------------------------------ roteiro
+// Um texto único do espetáculo; linhas que começam com "CENA" ou "#" dividem as cenas.
+const SCENE_RE = /^\s*(#+\s*|cena\b)/i;
+function renderScript() {
+  const view = $('#scriptView'), list = $('#sceneList');
+  const fs = state.scriptFs || 18;
+  view.style.fontSize = $('#scriptText').style.fontSize = fs + 'px';
+  view.innerHTML = ''; list.innerHTML = '';
+  const text = state.script || '';
+  if (!text.trim()) {
+    view.innerHTML = '<p class="empty">Nenhum roteiro ainda. Clique em <b>✎ Editar</b> e cole ou escreva o texto.</p>';
+  }
+  let n = 0;
+  for (const line of text.split('\n')) {
+    if (SCENE_RE.test(line)) {
+      const h = document.createElement('h3');
+      h.textContent = line.replace(/^\s*#+\s*/, '').trim();
+      view.append(h);
+      const b = document.createElement('button');
+      b.textContent = h.textContent;
+      b.title = h.textContent;
+      b.onclick = () => view.scrollTo({ top: h.offsetTop - 12, behavior: 'smooth' });
+      b._h = h;
+      list.append(b);
+      n++;
+    } else {
+      const p = document.createElement('p');
+      p.textContent = line || ' ';
+      view.append(p);
+    }
+  }
+  $('#sceneCount').textContent = pad2(n);
+  list.hidden = !n;
+  $('.script-body').style.gridTemplateColumns = n ? '' : '1fr';
+  markScene();
+}
+function markScene() {
+  const view = $('#scriptView'), btns = [...$('#sceneList').children];
+  let cur = null;
+  for (const b of btns) if (b._h.offsetTop - 40 <= view.scrollTop) cur = b;
+  cur = cur || btns[0];
+  btns.forEach(b => b.classList.toggle('current', b === cur));
+  cur?.scrollIntoView({ block: 'nearest' });
+}
+$('#scriptView').addEventListener('scroll', markScene, { passive: true });
+$('#scriptEdit').onclick = () => {
+  const ta = $('#scriptText'), editing = ta.hidden;
+  if (editing) { ta.value = state.script || ''; ta.hidden = false; $('#scriptView').hidden = true; $('#scriptEdit').textContent = '✓ Concluir'; ta.focus(); }
+  else { state.script = ta.value; ta.hidden = true; $('#scriptView').hidden = false; $('#scriptEdit').textContent = '✎ Editar'; renderScript(); save(); }
+};
+$('#scriptText').oninput = e => { state.script = e.target.value; save(); };
+const setFs = d => { state.scriptFs = Math.min(40, Math.max(12, (state.scriptFs || 18) + d)); renderScript(); save(); };
+$('#fsUp').onclick = () => setFs(2);
+$('#fsDown').onclick = () => setFs(-2);
+$('#scriptNav').onclick = () => $('#scriptPanel').scrollIntoView({ behavior: 'smooth' });
 $('#guide').onclick = () => $('#guideDialog').showModal();
 $('#closeGuide').onclick = () => $('#guideDialog').close();
 $('#desk').onclick = () => scrollTo({ top: 0, behavior: 'smooth' });
@@ -702,6 +757,7 @@ function applyState() {
   $('#volValue').textContent = state.musicVol + '%';
   applyEq();
   renderEq();
+  renderScript();
   select(0);
   renderPads();
 }
