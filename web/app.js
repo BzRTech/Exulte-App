@@ -802,8 +802,12 @@ for (const bt of document.querySelectorAll('#markBar button')) {
 }
 // "CENA 1", "Cena 2 – ...", "CENA III" ou qualquer linha curta começando com CENA (não um parágrafo)
 function isSceneTitle(plain) {
-  const t = plain.trim();
-  return /^cena\s*(\d+|[ivxlc]+\b)/i.test(t) || (/^cena\b/i.test(t) && t.length <= 60);
+  // aceita "Cena 1", "CENA III", "1ª CENA: ...", "5ª Cena – ...", "Ato 2", "1º ATO" (linhas curtas)
+  const t = plain.trim().replace(/^[^\p{L}\p{N}]+/u, ''); // ignora emoji/símbolos no início
+  if (t.length > 80) return false;
+  return /^(cena|ato)\s*(\d+|[ivxlc]+\b)/i.test(t)
+    || /^\d+\s*[ªºo°a]?\.?\s*(cena|ato)\b/i.test(t)
+    || (/^(cena|ato)\b/i.test(t) && t.length <= 60);
 }
 const SCENE_RE = /^\s*(#+\s*|cena\b)/i;
 function renderScript() {
