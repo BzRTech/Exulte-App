@@ -686,26 +686,57 @@ function serializeLine(prefix, plain, colors) {
   return prefix + runs(plain, colors).map(([t, c]) => !c ? t : c === 'y' ? `==${t}==` : `==${c}:${t}==`).join('');
 }
 // aplica (ou limpa, color=null) a marca no trecho selecionado do roteiro
+// Lê o roteiro direto da tela (vale para leitura e edição): linhas com cor por caractere.
+function domToScript(view) {
+  const lines = [];
+  let cur = null;
+  const newLine = prefix => { cur = { prefix: prefix || '', plain: '', colors: [] }; lines.push(cur); };
+  const walk = (node, color) => {
+    if (node.nodeType === 3) {
+      if (!cur) newLine();
+      const t = node.nodeValue.replace(/ /g, ' ');
+      cur.plain += t; cur.colors.push(...Array(t.length).fill(color));
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    if (node.tagName === 'BR') { if (!cur) newLine(); newLine(); return; }
+    const block = /^(DIV|P|H\d)$/.test(node.tagName);
+    if (block) newLine(node.dataset.prefix);
+    const c = node.tagName === 'MARK' ? (node.className.match(/hl-([yrb])/) || [])[1] || 'y' : color;
+    for (const ch of node.childNodes) walk(ch, c);
+    if (block) cur = null;
+  };
+  for (const ch of view.childNodes) walk(ch, null);
+  // linhas vazias (o espaço de preenchimento vira nada)
+  for (const l of lines) if (l.plain === ' ' && l.colors[0] == null && !l.prefix) l.plain = '', l.colors = [];
+  return lines;
+}
+const linesToText = lines => lines.map(l => serializeLine(l.prefix, l.plain, l.colors)).join('\n');
+
+// aplica (ou limpa, color=null) a marca no trecho selecionado do roteiro
 function markSelection(color) {
-  const sel = getSelection();
+  const sel = getSelection(), view = $('#scriptView');
   if (!sel.rangeCount || sel.isCollapsed) return;
-  const r = sel.getRangeAt(0), view = $('#scriptView');
-  const lineOf = node => (node.nodeType === 1 ? node : node.parentElement)?.closest('[data-line]');
-  const startEl = lineOf(r.startContainer), endEl = lineOf(r.endContainer);
-  if (!startEl || !endEl || !view.contains(startEl)) return;
-  const offIn = (el, node, off) => { const x = document.createRange(); x.selectNodeContents(el); x.setEnd(node, off); return x.toString().length; };
-  const lines = (state.script || '').split('\n');
-  const a = +startEl.dataset.line, b = +endEl.dataset.line;
-  for (let li = a; li <= b; li++) {
-    const el = view.querySelector(`[data-line="${li}"]`);
-    const { prefix, plain, colors } = parseLine(lines[li]);
-    const from = li === a ? offIn(el, r.startContainer, r.startOffset) : 0;
-    const to = li === b ? offIn(el, r.endContainer, r.endOffset) : plain.length;
-    for (let i = Math.max(0, from); i < Math.min(plain.length, to); i++) colors[i] = color;
-    lines[li] = serializeLine(prefix, plain, colors);
+  const r = sel.getRangeAt(0);
+  if (!view.contains(r.commonAncestorContainer)) return;
+  // marcadores temporários no início e no fim da seleção
+  const S = '', E = '';
+  const end = r.cloneRange(); end.collapse(false); end.insertNode(document.createTextNode(E));
+  const st = r.cloneRange(); st.collapse(true); st.insertNode(document.createTextNode(S));
+  const lines = domToScript(view);
+  let on = false;
+  for (const l of lines) {
+    let plain = '', colors = [];
+    for (let i = 0; i < l.plain.length; i++) {
+      const ch = l.plain[i];
+      if (ch === S) { on = true; continue; }
+      if (ch === E) { on = false; continue; }
+      plain += ch; colors.push(on ? color : l.colors[i]);
+    }
+    l.plain = plain; l.colors = colors;
   }
   const top = view.scrollTop;
-  state.script = lines.join('\n');
+  state.script = linesToText(lines);
   sel.removeAllRanges();
   hideMarkBar();
   renderScript();
@@ -729,11 +760,11 @@ const SCENE_RE = /^\s*(#+\s*|cena\b)/i;
 function renderScript() {
   const view = $('#scriptView'), list = $('#sceneList');
   const fs = state.scriptFs || 18;
-  view.style.fontSize = $('#scriptText').style.fontSize = fs + 'px';
+  view.style.fontSize = fs + 'px';
   view.innerHTML = ''; list.innerHTML = '';
   const text = state.script || '';
   if (!text.trim()) {
-    view.innerHTML = '<p class="empty">Nenhum roteiro ainda. Clique em <b>✎ Editar</b> e cole ou escreva o texto.</p>';
+    if (!view.isContentEditable) view.innerHTML = '<p class="empty" contenteditable="false">Nenhum roteiro ainda. Clique em <b>✎ Editar</b> e cole ou escreva o texto.</p>';
   }
   let n = 0;
   text.split('\n').forEach((line, li) => {
@@ -741,6 +772,7 @@ function renderScript() {
     const scene = !!prefix || /^\s*cena\b/i.test(plain);
     const el = document.createElement(scene ? 'h3' : 'p');
     el.dataset.line = li;
+    if (prefix) el.dataset.prefix = prefix;
     if (!plain) el.textContent = ' ';
     else for (const [t, c] of runs(plain, colors)) {
       if (!c) { el.append(t); continue; }
@@ -774,13 +806,34 @@ function markScene() {
   cur?.scrollIntoView({ block: 'nearest' });
 }
 $('#scriptView').addEventListener('scroll', markScene, { passive: true });
-$('#scriptEdit').onclick = () => {
-  const ta = $('#scriptText'), editing = ta.hidden;
-  if (editing) { ta.value = state.script || ''; ta.hidden = false; $('#scriptView').hidden = true; $('#scriptEdit').textContent = '✓ Concluir'; ta.focus(); }
-  else { state.script = ta.value; ta.hidden = true; $('#scriptView').hidden = false; $('#scriptEdit').textContent = '✎ Editar'; renderScript(); save(); }
-};
-$('#scriptText').oninput = e => { state.script = e.target.value; save(); };
-const setFs = d => { state.scriptFs = Math.min(40, Math.max(12, (state.scriptFs || 18) + d)); renderScript(); save(); };
+// Edição direto no texto, com as marcas coloridas visíveis (sem códigos)
+let editTimer;
+function syncFromEditor() { state.script = linesToText(domToScript($('#scriptView'))); save(); }
+function setEditing(on) {
+  const view = $('#scriptView');
+  if (!on && view.isContentEditable) { clearTimeout(editTimer); syncFromEditor(); }
+  view.contentEditable = on ? 'true' : 'false';
+  view.classList.toggle('editing', on);
+  $('#scriptEdit').textContent = on ? '✓ Concluir' : '✎ Editar';
+  if (!on) renderScript();
+  else {
+    if (!(state.script || '').trim()) { view.innerHTML = '<p data-line="0"> </p>'; }
+    view.focus();
+  }
+}
+$('#scriptEdit').onclick = () => setEditing(!$('#scriptView').isContentEditable);
+$('#scriptView').addEventListener('input', () => {
+  if (!$('#scriptView').isContentEditable) return;
+  clearTimeout(editTimer);
+  editTimer = setTimeout(syncFromEditor, 400);
+});
+// colar sempre como texto simples
+$('#scriptView').addEventListener('paste', e => {
+  if (!$('#scriptView').isContentEditable) return;
+  e.preventDefault();
+  document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+});
+const setFs = d => { if ($('#scriptView').isContentEditable) syncFromEditor(); state.scriptFs = Math.min(40, Math.max(12, (state.scriptFs || 18) + d)); renderScript(); save(); };
 $('#fsUp').onclick = () => setFs(2);
 $('#fsDown').onclick = () => setFs(-2);
 function sideMini(on) {
