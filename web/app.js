@@ -188,7 +188,7 @@ function stopEffects() {
 // ------------------------------------------------------------------ faixas
 
 function renderTracks() {
-  const list = $('#trackList');
+  const list = $('#trackList'), top = list.scrollTop;
   list.replaceChildren();
   $('#count').textContent = pad2(state.tracks.length);
   state.tracks.forEach((t, i) => {
@@ -211,6 +211,13 @@ function renderTracks() {
     list.append(row);
   });
   if (!state.tracks.length) list.innerHTML = '<div class="empty">Seu espetáculo começa aqui.<br>Importe uma música para preparar a primeira cena.</div>';
+  list.scrollTop = top;
+  const sel = list.querySelector('.track.selected'); // mantém a faixa atual visível, só dentro da lista
+  if (sel) {
+    const y = sel.offsetTop - list.offsetTop;
+    if (y < list.scrollTop) list.scrollTop = y;
+    else if (y + sel.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = y + sel.offsetHeight - list.clientHeight;
+  }
 }
 
 function removeTrack(i) {

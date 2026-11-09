@@ -66,3 +66,9 @@ mark.hl-y{background:#f5e663}mark.hl-r{background:#ff8f8f}mark.hl-b{background:#
 .mark-bar button{padding:4px 8px;border:0;background:transparent;font-size:16px;line-height:1}
 .mark-bar .hl-y{color:#f5e663}.mark-bar .hl-r{color:#ff8f8f}.mark-bar .hl-b{color:#8fc7ff}
 .scene-list button.marked::before{content:'●';color:#f5e663;margin-right:6px}
+
+/* sequência longa: a lista rola dentro do painel */
+#trackList{max-height:max(240px,calc(100vh - 520px));overflow-y:auto;scrollbar-width:thin;scrollbar-color:#3b4438 transparent}
+#trackList::-webkit-scrollbar{width:8px}#trackList::-webkit-scrollbar-thumb{background:#3b4438;border-radius:4px}
+.mark-bar[hidden]{display:none}
+#trackList .track{padding-block:11px}#trackList .track-info small{margin-top:4px}
