@@ -61,6 +61,13 @@ type Project struct {
 	Auto     bool     `json:"auto"`
 	MusicVol float64  `json:"musicVol"`
 	FxVol    float64  `json:"fxVol"`
+	Eq       *EQ      `json:"eq,omitempty"`
+}
+
+// EQ é o equalizador geral (músicas e efeitos): ganho em dB de cada faixa.
+type EQ struct {
+	On    bool      `json:"on"`
+	Gains []float64 `json:"gains"`
 }
 
 var fileNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,80}\.[a-z0-9]{1,5}$`)
@@ -161,6 +168,14 @@ func (s *Store) validate(p *Project) error {
 		}
 	}
 	p.MusicVol = clamp(p.MusicVol, 0, 100)
+	if p.Eq != nil {
+		if len(p.Eq.Gains) > 10 {
+			p.Eq.Gains = p.Eq.Gains[:10]
+		}
+		for i, g := range p.Eq.Gains {
+			p.Eq.Gains[i] = clamp(g, -12, 12)
+		}
+	}
 	p.FxVol = clamp(p.FxVol, 0, 100)
 	return nil
 }

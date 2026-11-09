@@ -70,12 +70,59 @@ function toast(s, ms = 4000) {
 
 const fx = { ctx: null, gain: null, buffers: new Map(), loading: new Map() };
 
+// ------------------------------------------------------------------ equalizador geral
+// Tudo (música, efeitos curtos e longos) passa por eq.input -> filtros -> saída.
+const EQ_BANDS = [
+  { f: 60, type: 'lowshelf', label: 'Grave' },
+  { f: 250, type: 'peaking', label: 'Médio-grave' },
+  { f: 1000, type: 'peaking', label: 'Médio' },
+  { f: 4000, type: 'peaking', label: 'Médio-agudo' },
+  { f: 12000, type: 'highshelf', label: 'Agudo' },
+];
+const eq = { input: null, filters: [] };
+
+function eqState() {
+  if (!state.eq || !Array.isArray(state.eq.gains)) state.eq = { on: true, gains: [] };
+  while (state.eq.gains.length < EQ_BANDS.length) state.eq.gains.push(0);
+  return state.eq;
+}
+
+function applyEq(smooth = true) {
+  if (!fx.ctx) return;
+  const s = eqState();
+  eq.filters.forEach((f, i) => {
+    const g = s.on ? s.gains[i] : 0;
+    if (smooth) f.gain.setTargetAtTime(g, fx.ctx.currentTime, 0.03);
+    else f.gain.value = g;
+  });
+}
+
+// liga um elemento <audio> ao equalizador (só uma vez por elemento)
+function routeElement(el) {
+  if (!fx.ctx || el._routed) return;
+  try { fx.ctx.createMediaElementSource(el).connect(eq.input); el._routed = true; } catch { }
+}
+
 function audioCtx() {
   if (!fx.ctx) {
     fx.ctx = new AudioContext({ latencyHint: 'interactive' });
     fx.gain = fx.ctx.createGain();
     fx.gain.gain.value = state.fxVol / 100;
-    fx.gain.connect(fx.ctx.destination);
+    eq.input = fx.ctx.createGain();
+    let node = eq.input;
+    for (const b of EQ_BANDS) {
+      const f = fx.ctx.createBiquadFilter();
+      f.type = b.type;
+      f.frequency.value = b.f;
+      if (b.type === 'peaking') f.Q.value = 1;
+      node.connect(f);
+      node = f;
+      eq.filters.push(f);
+    }
+    node.connect(fx.ctx.destination);
+    fx.gain.connect(eq.input);
+    applyEq(false);
+    routeElement(music);
   }
   if (fx.ctx.state === 'suspended') fx.ctx.resume().catch(() => { });
   return fx.ctx;
@@ -123,6 +170,7 @@ async function trigger(id, scheduled = false) {
   } else {
     const el = new Audio(audioURL(e.file));
     el.volume = state.fxVol / 100;
+    routeElement(el);
     handle = { el, stop: () => el.pause() };
     el.onended = () => { if (active.get(id) === handle) { active.delete(id); updatePads(); } };
     try { await el.play(); } catch { toast('Este efeito não pôde ser reproduzido.'); return updatePads(); }
@@ -575,6 +623,30 @@ $('#cueForm').onsubmit = e => {
   $('#cueDialog').close();
 };
 
+function renderEq() {
+  const s = eqState(), box = $('#eqBands');
+  $('#eqOn').checked = s.on;
+  box.classList.toggle('off', !s.on);
+  box.innerHTML = '';
+  EQ_BANDS.forEach((b, i) => {
+    const d = document.createElement('div');
+    d.className = 'eq-band';
+    const hz = b.f >= 1000 ? b.f / 1000 + ' kHz' : b.f + ' Hz';
+    d.innerHTML = `<output></output><input type="range" min="-12" max="12" step="0.5" aria-label="${b.label} (${hz})"><span>${hz}</span>`;
+    const r = d.querySelector('input'), out = d.querySelector('output');
+    const show = () => out.textContent = (s.gains[i] > 0 ? '+' : '') + s.gains[i] + ' dB';
+    r.value = s.gains[i];
+    show();
+    r.oninput = () => { s.gains[i] = +r.value; show(); applyEq(); save(); };
+    r.ondblclick = () => { s.gains[i] = 0; r.value = 0; show(); applyEq(); save(); };
+    d.title = b.label + ' — duplo clique zera';
+    box.append(d);
+  });
+}
+$('#eqOpen').onclick = () => { renderEq(); $('#eqDialog').showModal(); };
+$('#eqClose').onclick = () => $('#eqDialog').close();
+$('#eqOn').onchange = e => { eqState().on = e.target.checked; $('#eqBands').classList.toggle('off', !e.target.checked); applyEq(); save(); };
+$('#eqReset').onclick = () => { eqState().gains = EQ_BANDS.map(() => 0); renderEq(); applyEq(); save(); };
 $('#guide').onclick = () => $('#guideDialog').showModal();
 $('#closeGuide').onclick = () => $('#guideDialog').close();
 $('#desk').onclick = () => scrollTo({ top: 0, behavior: 'smooth' });
@@ -628,6 +700,8 @@ function applyState() {
   music.volume = state.musicVol / 100;
   if (fx.gain) fx.gain.gain.value = state.fxVol / 100;
   $('#volValue').textContent = state.musicVol + '%';
+  applyEq();
+  renderEq();
   select(0);
   renderPads();
 }
