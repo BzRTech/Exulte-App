@@ -1089,13 +1089,19 @@ document.addEventListener('keydown', e => {
 
 // ------------------------------------------------------------------ backup
 
-$('#backup').onclick = async () => {
-  await flush();
-  const a = document.createElement('a');
-  a.href = '/api/export';
-  a.download = '';
-  a.click();
-  toast('Gerando backup (.zip) com todos os áudios. Ele será salvo na pasta Downloads.', 7000);
+$('#backup').onclick = () => $('#backupDialog').showModal();
+$('#backupCancel').onclick = () => $('#backupDialog').close();
+for (const b of document.querySelectorAll('#backupDialog [data-media]')) b.onclick = async () => {
+  const media = b.dataset.media === '1';
+  $('#backupDialog').close();
+  toast(media ? 'Salvando backup com todas as músicas e efeitos… pode levar alguns segundos.' : 'Salvando backup sem mídia…', 0);
+  try {
+    await flush();
+    const r = await api('POST', '/api/backup?media=' + (media ? 1 : 0));
+    toast('Backup salvo em: ' + r.path, 12000);
+  } catch (err) {
+    toast('Não foi possível salvar o backup: ' + err.message, 12000);
+  }
 };
 
 $('#restore').onchange = async e => {
@@ -1107,11 +1113,14 @@ $('#restore').onchange = async e => {
   toast('Abrindo backup… isso pode levar alguns segundos.', 0);
   try {
     await flush();
-    state = await api('POST', '/api/restore', f);
+    const res = await fetch('/api/restore', { method: 'POST', body: f, headers: { 'X-Deixa': '1' } });
+    if (!res.ok) { let m = res.statusText; try { m = (await res.json()).error || m; } catch { } throw new Error(m); }
+    const missing = +res.headers.get('X-Deixa-Missing') || 0;
+    state = await res.json();
     fx.buffers.clear();
     applyState();
     preloadEffects();
-    toast('Espetáculo restaurado.');
+    toast(missing ? `Espetáculo restaurado. ${missing} áudio(s) não estavam no backup (backup sem mídia): importe essas músicas/efeitos de novo.` : 'Espetáculo restaurado.', missing ? 12000 : 4000);
   } catch (err) {
     toast('Não foi possível abrir o backup: ' + err.message, 9000);
   }

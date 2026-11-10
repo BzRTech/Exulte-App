@@ -117,3 +117,6 @@ mark.hl-y{background:#f5e663}mark.hl-r{background:#ff8f8f}mark.hl-b{background:#
 .fxvol-value{font:600 20px 'Space Grotesk',sans-serif;color:var(--lime);text-align:center;margin-bottom:6px;white-space:pre}
 #fxVolDialog .dialog-actions{flex-wrap:wrap}
 .effects-foot .level-all{font-size:9px;padding:5px 8px;background:transparent;white-space:nowrap}
+.backup-opts{display:grid;gap:10px;margin-top:14px}
+.backup-opt{display:grid;justify-content:start;text-align:left;gap:4px;padding:14px 16px}
+.backup-opt b{font-size:14px;color:var(--lime)}.backup-opt span{font-size:12px;color:var(--muted);line-height:1.5}

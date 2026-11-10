@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -147,9 +148,46 @@ func newServer(store *Store, conv *Converter, pending *pendingQueue, dataDir str
 		p := store.Project()
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", `attachment; filename="`+safeFileName(p.Name)+`.zip"`)
-		if err := store.Export(w); err != nil {
+		if err := store.Export(w, r.URL.Query().Get("media") != "0"); err != nil {
 			log.Println("exportar:", err)
 		}
+	})
+	// Salva o backup direto numa pasta (Documentos\Deixa - Backups) e abre o Explorer nele.
+	mux.HandleFunc("POST /api/backup", func(w http.ResponseWriter, r *http.Request) {
+		withMedia := r.URL.Query().Get("media") != "0"
+		dir := backupDir(dataDir)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			httpError(w, "não foi possível criar a pasta de backups: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		p := store.Project()
+		suffix := "com-midia"
+		if !withMedia {
+			suffix = "sem-midia"
+		}
+		name := fmt.Sprintf("%s %s %s.zip", zipSafe(p.Name), time.Now().Format("2006-01-02 15h04"), suffix)
+		dst := filepath.Join(dir, name)
+		tmp := dst + ".parcial"
+		f, err := os.Create(tmp)
+		if err != nil {
+			httpError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = store.Export(f, withMedia)
+		if cerr := f.Close(); err == nil {
+			err = cerr
+		}
+		if err == nil {
+			err = os.Rename(tmp, dst)
+		}
+		if err != nil {
+			os.Remove(tmp)
+			log.Println("backup:", err)
+			httpError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		selectFile(dst)
+		writeJSON(w, map[string]any{"path": dst})
 	})
 	mux.HandleFunc("POST /api/restore", func(w http.ResponseWriter, r *http.Request) {
 		tmp, err := os.CreateTemp("", "restaurar-*")
@@ -170,6 +208,7 @@ func newServer(store *Store, conv *Converter, pending *pendingQueue, dataDir str
 			httpError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		w.Header().Set("X-Deixa-Missing", fmt.Sprint(store.Missing))
 		writeJSON(w, p)
 	})
 	mux.HandleFunc("POST /api/open-folder", func(w http.ResponseWriter, r *http.Request) {
@@ -387,4 +426,17 @@ func safeFileName(name string) string {
 		s = "espetaculo"
 	}
 	return s + "-" + time.Now().Format("2006-01-02")
+}
+
+// backupDir: Documentos\Deixa - Backups (ou, se não houver, Deixa-dados\backups).
+func backupDir(dataDir string) string {
+	if home, err := os.UserHomeDir(); err == nil {
+		for _, docs := range []string{"Documents", "Documentos"} {
+			d := filepath.Join(home, docs)
+			if st, err := os.Stat(d); err == nil && st.IsDir() {
+				return filepath.Join(d, "Deixa - Backups")
+			}
+		}
+	}
+	return filepath.Join(dataDir, "backups")
 }

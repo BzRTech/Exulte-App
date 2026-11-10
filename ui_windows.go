@@ -137,3 +137,8 @@ func openBrowser(url string) {
 func openFolder(dir string) {
 	exec.Command("explorer", dir).Start()
 }
+
+// selectFile abre o Explorer com o arquivo selecionado.
+func selectFile(path string) {
+	exec.Command("explorer", "/select,"+path).Start()
+}

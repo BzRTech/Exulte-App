@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 )
 
 func acquireSingleInstance() (func(), bool) { return func() {}, true }
@@ -34,3 +35,5 @@ func fatal(text string) {
 
 func openBrowser(url string) { exec.Command("xdg-open", url).Start() }
 func openFolder(dir string)  { exec.Command("xdg-open", dir).Start() }
+
+func selectFile(path string) { openFolder(filepath.Dir(path)) }

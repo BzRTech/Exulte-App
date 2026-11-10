@@ -96,11 +96,12 @@ var knownExt = map[string]bool{
 }
 
 type Store struct {
-	dir    string
-	audio  string
-	mu     sync.Mutex
-	proj   Project
-	saveMu sync.Mutex
+	Missing int // áudios que faltaram no último restore (backup sem mídia)
+	dir     string
+	audio   string
+	mu      sync.Mutex
+	proj    Project
+	saveMu  sync.Mutex
 }
 
 func openStore(dir string) (*Store, error) {
@@ -389,14 +390,43 @@ func wavDuration(b []byte) float64 {
 
 // ------------------------------------------------------------------ backup
 
-func (s *Store) Export(w io.Writer) error {
+// Export grava o backup .zip. Com mídia, os áudios vão em pastas legíveis:
+// "Músicas/01 - Nome.mp3" (na ordem da sequência) e "Efeitos/Nome.wav".
+// Sem mídia, só o projeto (sequência, roteiro, anotações, deixas, ajustes).
+func (s *Store) Export(w io.Writer, withMedia bool) error {
 	p := s.Project()
 	zw := zip.NewWriter(w)
+	now := time.Now()
+	where := map[string]string{} // arquivo interno -> caminho dentro do zip
+	used := map[string]bool{}
+	type item struct{ file, zipPath string }
+	var items []item
+	add := func(file, folder, name string) {
+		if _, ok := where[file]; ok {
+			return
+		}
+		ext := filepath.Ext(file)
+		base := zipSafe(strings.TrimSuffix(name, filepath.Ext(name)))
+		zp := folder + "/" + base + ext
+		for i := 2; used[strings.ToLower(zp)]; i++ {
+			zp = fmt.Sprintf("%s/%s (%d)%s", folder, base, i, ext)
+		}
+		used[strings.ToLower(zp)] = true
+		where[file] = zp
+		items = append(items, item{file, zp})
+	}
+	if withMedia {
+		for i, t := range p.Tracks {
+			add(t.File, "Músicas", fmt.Sprintf("%02d - %s", i+1, t.Name))
+		}
+		for _, e := range p.Effects {
+			add(e.File, "Efeitos", e.Name)
+		}
+	}
 	b, err := json.MarshalIndent(p, "", "  ")
 	if err != nil {
 		return err
 	}
-	now := time.Now()
 	jw, err := zw.CreateHeader(&zip.FileHeader{Name: "projeto.json", Method: zip.Deflate, Modified: now})
 	if err != nil {
 		return err
@@ -404,24 +434,16 @@ func (s *Store) Export(w io.Writer) error {
 	if _, err := jw.Write(b); err != nil {
 		return err
 	}
-	seen := map[string]bool{}
-	var files []string
-	for _, t := range p.Tracks {
-		files = append(files, t.File)
+	mb, _ := json.MarshalIndent(map[string]any{"comMidia": withMedia, "arquivos": where}, "", "  ")
+	if mw, err := zw.CreateHeader(&zip.FileHeader{Name: "midia.json", Method: zip.Deflate, Modified: now}); err == nil {
+		mw.Write(mb)
 	}
-	for _, e := range p.Effects {
-		files = append(files, e.File)
-	}
-	for _, name := range files {
-		if seen[name] {
-			continue
-		}
-		seen[name] = true
-		f, err := os.Open(filepath.Join(s.audio, name))
+	for _, it := range items {
+		f, err := os.Open(filepath.Join(s.audio, it.file))
 		if err != nil {
-			return fmt.Errorf("áudio ausente: %s", name)
+			return fmt.Errorf("áudio ausente: %s", it.file)
 		}
-		aw, err := zw.CreateHeader(&zip.FileHeader{Name: "audios/" + name, Method: zip.Store, Modified: now})
+		aw, err := zw.CreateHeader(&zip.FileHeader{Name: it.zipPath, Method: zip.Store, Modified: now})
 		if err == nil {
 			_, err = io.CopyBuffer(aw, f, make([]byte, 1<<20))
 		}
@@ -433,8 +455,27 @@ func (s *Store) Export(w io.Writer) error {
 	return zw.Close()
 }
 
+// zipSafe tira do nome os caracteres que o Windows não aceita em arquivos.
+func zipSafe(name string) string {
+	name = strings.Map(func(r rune) rune {
+		if r < 32 || strings.ContainsRune(`<>:"/\|?*`, r) {
+			return '_'
+		}
+		return r
+	}, strings.TrimSpace(name))
+	name = strings.TrimRight(name, ". ")
+	if len(name) > 120 {
+		name = name[:120]
+	}
+	if name == "" {
+		name = "audio"
+	}
+	return name
+}
+
 // Restore abre um backup .zip (versão desktop) ou .json (versão de navegador).
 func (s *Store) Restore(file string) (Project, error) {
+	s.Missing = 0
 	head := make([]byte, 4)
 	f, err := os.Open(file)
 	if err != nil {
@@ -484,14 +525,33 @@ func (s *Store) restoreZip(file string) (Project, error) {
 	if err := s.validate(&p); err != nil {
 		return Project{}, err
 	}
+	where := map[string]string{}
+	if mf, ok := byName["midia.json"]; ok {
+		if rc, err := mf.Open(); err == nil {
+			var m struct {
+				Arquivos map[string]string `json:"arquivos"`
+			}
+			json.NewDecoder(rc).Decode(&m)
+			rc.Close()
+			where = m.Arquivos
+		}
+	}
 	renamed := map[string]string{}
 	importOne := func(name string) (string, error) {
 		if n, ok := renamed[name]; ok {
 			return n, nil
 		}
-		zf, ok := byName[path.Join("audios", name)]
+		zf, ok := byName[where[name]]
 		if !ok {
-			return "", fmt.Errorf("áudio ausente no backup: %s", name)
+			zf, ok = byName[path.Join("audios", name)] // backups antigos
+		}
+		if !ok {
+			// backup sem mídia: usa o áudio deste computador, se já existir
+			if _, err := os.Stat(filepath.Join(s.audio, name)); err == nil {
+				return name, nil
+			}
+			s.Missing++
+			return name, nil // fica na sequência; reimporte o áudio depois
 		}
 		rc, err := zf.Open()
 		if err != nil {
